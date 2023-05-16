@@ -29,6 +29,16 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f4xx_hal.h"
 
+#include "stm32f4xx_ll_system.h"
+#include "stm32f4xx_ll_gpio.h"
+#include "stm32f4xx_ll_exti.h"
+#include "stm32f4xx_ll_bus.h"
+#include "stm32f4xx_ll_cortex.h"
+#include "stm32f4xx_ll_rcc.h"
+#include "stm32f4xx_ll_utils.h"
+#include "stm32f4xx_ll_pwr.h"
+#include "stm32f4xx_ll_dma.h"
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 
@@ -58,27 +68,27 @@ void Error_Handler(void);
 
 /* Private defines -----------------------------------------------------------*/
 #define ADC_SAMPLE_PERIOD_US 10000
-#define Onboard_LED_Pin GPIO_PIN_13
+#define Onboard_LED_Pin LL_GPIO_PIN_13
 #define Onboard_LED_GPIO_Port GPIOC
-#define CS_MUX_B_Pin GPIO_PIN_0
+#define CS_MUX_B_Pin LL_GPIO_PIN_0
 #define CS_MUX_B_GPIO_Port GPIOA
-#define IN_D_Pin GPIO_PIN_4
+#define IN_D_Pin LL_GPIO_PIN_4
 #define IN_D_GPIO_Port GPIOA
-#define CS_MUX_A_Pin GPIO_PIN_2
+#define CS_MUX_A_Pin LL_GPIO_PIN_2
 #define CS_MUX_A_GPIO_Port GPIOB
-#define IO_ST_Pin GPIO_PIN_12
+#define IO_ST_Pin LL_GPIO_PIN_12
 #define IO_ST_GPIO_Port GPIOB
-#define OUT_SH_Pin GPIO_PIN_13
+#define OUT_SH_Pin LL_GPIO_PIN_13
 #define OUT_SH_GPIO_Port GPIOB
-#define IN_SH_Pin GPIO_PIN_14
+#define IN_SH_Pin LL_GPIO_PIN_14
 #define IN_SH_GPIO_Port GPIOB
-#define DISP_SH_Pin GPIO_PIN_15
+#define DISP_SH_Pin LL_GPIO_PIN_15
 #define DISP_SH_GPIO_Port GPIOB
-#define DISP_ST_Pin GPIO_PIN_8
+#define DISP_ST_Pin LL_GPIO_PIN_8
 #define DISP_ST_GPIO_Port GPIOA
-#define SR_D_Pin GPIO_PIN_15
+#define SR_D_Pin LL_GPIO_PIN_15
 #define SR_D_GPIO_Port GPIOA
-#define CS_MUX_C_Pin GPIO_PIN_4
+#define CS_MUX_C_Pin LL_GPIO_PIN_4
 #define CS_MUX_C_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */

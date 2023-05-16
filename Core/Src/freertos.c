@@ -30,8 +30,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 typedef StaticTask_t osStaticThreadDef_t;
-typedef StaticQueue_t osStaticMessageQDef_t;
-typedef StaticSemaphore_t osStaticMutexDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -181,74 +179,6 @@ const osThreadAttr_t ethernetTask_attributes = {
   .stack_mem = &ethernetTaskBuffer[0],
   .stack_size = sizeof(ethernetTaskBuffer),
   .priority = (osPriority_t) osPriorityNormal,
-};
-/* Definitions for modbusQueue */
-osMessageQueueId_t modbusQueueHandle;
-uint8_t modbusQueueBuffer[ 16 * sizeof( modbus_cmd_t ) ];
-osStaticMessageQDef_t modbusQueueControlBlock;
-const osMessageQueueAttr_t modbusQueue_attributes = {
-  .name = "modbusQueue",
-  .cb_mem = &modbusQueueControlBlock,
-  .cb_size = sizeof(modbusQueueControlBlock),
-  .mq_mem = &modbusQueueBuffer,
-  .mq_size = sizeof(modbusQueueBuffer)
-};
-/* Definitions for adcQueue */
-osMessageQueueId_t adcQueueHandle;
-uint8_t adcQueueBuffer[ 4 * 16 ];
-osStaticMessageQDef_t adcQueueControlBlock;
-const osMessageQueueAttr_t adcQueue_attributes = {
-  .name = "adcQueue",
-  .cb_mem = &adcQueueControlBlock,
-  .cb_size = sizeof(adcQueueControlBlock),
-  .mq_mem = &adcQueueBuffer,
-  .mq_size = sizeof(adcQueueBuffer)
-};
-/* Definitions for debugInteropQueue */
-osMessageQueueId_t debugInteropQueueHandle;
-uint8_t debugInteropQueueBuffer[ 4 * sizeof( dbg_interop_t ) ];
-osStaticMessageQDef_t debugInteropQueueControlBlock;
-const osMessageQueueAttr_t debugInteropQueue_attributes = {
-  .name = "debugInteropQueue",
-  .cb_mem = &debugInteropQueueControlBlock,
-  .cb_size = sizeof(debugInteropQueueControlBlock),
-  .mq_mem = &debugInteropQueueBuffer,
-  .mq_size = sizeof(debugInteropQueueBuffer)
-};
-/* Definitions for motorCommandQueue */
-osMessageQueueId_t motorCommandQueueHandle;
-uint8_t motorCommandQueueBuffer[ 32 * sizeof( motor_cmd_t ) ];
-osStaticMessageQDef_t motorCommandQueueControlBlock;
-const osMessageQueueAttr_t motorCommandQueue_attributes = {
-  .name = "motorCommandQueue",
-  .cb_mem = &motorCommandQueueControlBlock,
-  .cb_size = sizeof(motorCommandQueueControlBlock),
-  .mq_mem = &motorCommandQueueBuffer,
-  .mq_size = sizeof(motorCommandQueueBuffer)
-};
-/* Definitions for srMutex */
-osMutexId_t srMutexHandle;
-osStaticMutexDef_t srMutexControlBlock;
-const osMutexAttr_t srMutex_attributes = {
-  .name = "srMutex",
-  .cb_mem = &srMutexControlBlock,
-  .cb_size = sizeof(srMutexControlBlock),
-};
-/* Definitions for spiMutex */
-osMutexId_t spiMutexHandle;
-osStaticMutexDef_t spiMutexControlBlock;
-const osMutexAttr_t spiMutex_attributes = {
-  .name = "spiMutex",
-  .cb_mem = &spiMutexControlBlock,
-  .cb_size = sizeof(spiMutexControlBlock),
-};
-/* Definitions for i2cMutex */
-osMutexId_t i2cMutexHandle;
-osStaticMutexDef_t i2cMutexControlBlock;
-const osMutexAttr_t i2cMutex_attributes = {
-  .name = "i2cMutex",
-  .cb_mem = &i2cMutexControlBlock,
-  .cb_size = sizeof(i2cMutexControlBlock),
 };
 
 /* Private function prototypes -----------------------------------------------*/

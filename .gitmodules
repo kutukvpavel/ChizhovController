@@ -1,3 +1,6 @@
 [submodule "App/ushell"]
 	path = App/ushell
 	url = https://github.com/kutukvpavel/ushell-stm32.git
+[submodule "App/modbus"]
+	path = App/modbus
+	url = https://github.com/kutukvpavel/Modbus-STM32-HAL-FreeRTOS.git

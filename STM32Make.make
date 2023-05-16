@@ -98,6 +98,8 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c
 
 CPP_SOURCES = \
 App/dbg_shell.cpp \
+App/display.cpp \
+App/sr_io.cpp \
 App/user.cpp
 
 
