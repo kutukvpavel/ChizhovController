@@ -1,10 +1,10 @@
 #include "user.h"
 
-__BEGIN_STD_C
+_BEGIN_STD_C
 
-void void StartMainTask(void *argument)
+void StartMainTask(void *argument)
 {
-
+    
 }
 
 void StartAdcTask(void *argument)
@@ -57,4 +57,4 @@ void StartEthernetTask(void *argument)
 
 }
 
-__END_STD_C
+_END_STD_C

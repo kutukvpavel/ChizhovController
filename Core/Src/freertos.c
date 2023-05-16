@@ -78,7 +78,7 @@ const osThreadAttr_t adcTask_attributes = {
 osThreadId_t thermocoupleTasHandle;
 uint32_t thermocoupleTasBuffer[ 256 ];
 osStaticThreadDef_t thermocoupleTasControlBlock;
-const osThreadAttr_t thermocoupleTas_attributes = {
+const osThreadAttr_t thermocoupleTask_attributes = {
   .name = "thermocoupleTas",
   .cb_mem = &thermocoupleTasControlBlock,
   .cb_size = sizeof(thermocoupleTasControlBlock),
@@ -277,6 +277,19 @@ void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
+
+  osThreadNew(StartMainTask, NULL, &defaultTask_attributes);
+
+  osThreadNew(StartAdcTask, NULL, &adcTask_attributes);
+  osThreadNew(StartThermocoupleTask, NULL, &thermocoupleTask_attributes);
+  osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
+  osThreadNew(StartEncoderTask, NULL, &encoderTask_attributes);
+  osThreadNew(StartIoTask, NULL, &ioTask_attributes);
+  osThreadNew(StartDebugMenuTask, NULL, &debugMenuTask_attributes);
+  osThreadNew(StartModbusTask, NULL, &modbusTask_attributes);
+  osThreadNew(StartUsbTask, NULL, &usbTask_attributes);
+  osThreadNew(StartRs485Task, NULL, &rs485_Task_attributes);
+  osThreadNew(StartEthernetTask, NULL, &ethernetTask_attributes);
 
   /* USER CODE END Init */
 /* USER CODE BEGIN Header */

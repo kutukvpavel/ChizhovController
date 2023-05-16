@@ -69,12 +69,14 @@ excludes:
 # Include directories (directories containing .h or .hpp files)
 # If a CubeMX makefile is present it will automatically include the include directories from that makefile.
 includeDirectories: 
+  - App/**
   - Inc/**
   - Core/Inc/**
   - Core/Lib/**
   - Src/**
   - Core/Src/**
   - Core/Lib/**
+  - Middlewares/Third_Party/FreeRTOS/Source/include/**
 
 
 # Files that should be included in the compilation.
@@ -86,6 +88,7 @@ sourceFiles:
   - Src/**
   - Core/Src/**
   - Core/Lib/**
+  - App/**
 
 
 # When no makefile is present it will show a warning pop-up.

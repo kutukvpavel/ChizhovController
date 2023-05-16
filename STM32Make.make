@@ -95,6 +95,7 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c
 
 
 CPP_SOURCES = \
+App/user.cpp
 
 
 # ASM sources
@@ -165,6 +166,7 @@ AS_INCLUDES = \
 
 # C includes
 C_INCLUDES =  \
+-IApp \
 -ICore/Inc \
 -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
 -IDrivers/CMSIS/Include \
