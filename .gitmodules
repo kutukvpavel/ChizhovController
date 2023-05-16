@@ -1,0 +1,3 @@
+[submodule "App/ushell"]
+	path = App/ushell
+	url = https://github.com/kutukvpavel/ushell-stm32.git
