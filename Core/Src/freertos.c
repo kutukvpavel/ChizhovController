@@ -78,7 +78,7 @@ const osThreadAttr_t adcTask_attributes = {
 osThreadId_t thermocoupleTasHandle;
 uint32_t thermocoupleTasBuffer[ 256 ];
 osStaticThreadDef_t thermocoupleTasControlBlock;
-const osThreadAttr_t thermocoupleTask_attributes = {
+const osThreadAttr_t thermocoupleTas_attributes = {
   .name = "thermocoupleTas",
   .cb_mem = &thermocoupleTasControlBlock,
   .cb_size = sizeof(thermocoupleTasControlBlock),
@@ -281,7 +281,7 @@ void MX_FREERTOS_Init(void) {
   osThreadNew(StartMainTask, NULL, &defaultTask_attributes);
 
   osThreadNew(StartAdcTask, NULL, &adcTask_attributes);
-  osThreadNew(StartThermocoupleTask, NULL, &thermocoupleTask_attributes);
+  osThreadNew(StartThermocoupleTask, NULL, &thermocoupleTas_attributes);
   osThreadNew(StartDisplayTask, NULL, &displayTask_attributes);
   osThreadNew(StartEncoderTask, NULL, &encoderTask_attributes);
   osThreadNew(StartIoTask, NULL, &ioTask_attributes);

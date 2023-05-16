@@ -36,6 +36,8 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
+App/ushell/src/sys_command_line.c \
+App/ushell/src/sys_queue.c \
 Core/Src/adc.c \
 Core/Src/crc.c \
 Core/Src/dma.c \
@@ -95,6 +97,7 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c
 
 
 CPP_SOURCES = \
+App/dbg_shell.cpp \
 App/user.cpp
 
 
@@ -167,6 +170,7 @@ AS_INCLUDES = \
 # C includes
 C_INCLUDES =  \
 -IApp \
+-IApp/ushell/inc \
 -ICore/Inc \
 -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
 -IDrivers/CMSIS/Include \

@@ -6,7 +6,7 @@
 
 #include "types.h"
 
-#ifdef __cplusplus
+/*#ifdef __cplusplus
 #if !(defined(_BEGIN_STD_C) && defined(_END_STD_C))
 #ifdef _HAVE_STD_CXX
 #define _BEGIN_STD_C namespace std { extern "C" {
@@ -21,4 +21,6 @@
 #else
 #define _BEGIN_STD_C
 #define _END_STD_C
-#endif
+#endif*/
+
+#define MY_FIRMWARE_INFO_STR "reactor_ctrl-v0.1-a"

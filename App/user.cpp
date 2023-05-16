@@ -32,11 +32,6 @@ void StartIoTask(void *argument)
 
 }
 
-void StartDebugMenuTask(void *argument)
-{
-
-}
-
 void StartModbusTask(void *argument)
 {
 
