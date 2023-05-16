@@ -95,7 +95,7 @@
 
 /* CMSIS-RTOS V2 flags */
 #define configUSE_OS2_THREAD_SUSPEND_RESUME  1
-#define configUSE_OS2_THREAD_ENUMERATE       1
+#define configUSE_OS2_THREAD_ENUMERATE       0
 #define configUSE_OS2_EVENTFLAGS_FROM_ISR    1
 #define configUSE_OS2_THREAD_FLAGS           1
 #define configUSE_OS2_TIMER                  1

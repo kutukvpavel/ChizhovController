@@ -25,10 +25,13 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "../../App/types.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
+typedef StaticTask_t osStaticThreadDef_t;
+typedef StaticQueue_t osStaticMessageQDef_t;
+typedef StaticSemaphore_t osStaticMutexDef_t;
 /* USER CODE BEGIN PTD */
 
 /* USER CODE END PTD */
@@ -49,10 +52,203 @@
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
 osThreadId_t defaultTaskHandle;
+uint32_t defaultTaskBuffer[ 1024 ];
+osStaticThreadDef_t defaultTaskControlBlock;
 const osThreadAttr_t defaultTask_attributes = {
   .name = "defaultTask",
-  .stack_size = 128 * 4,
+  .cb_mem = &defaultTaskControlBlock,
+  .cb_size = sizeof(defaultTaskControlBlock),
+  .stack_mem = &defaultTaskBuffer[0],
+  .stack_size = sizeof(defaultTaskBuffer),
   .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for adcTask */
+osThreadId_t adcTaskHandle;
+uint32_t adcTaskBuffer[ 256 ];
+osStaticThreadDef_t adcTaskControlBlock;
+const osThreadAttr_t adcTask_attributes = {
+  .name = "adcTask",
+  .cb_mem = &adcTaskControlBlock,
+  .cb_size = sizeof(adcTaskControlBlock),
+  .stack_mem = &adcTaskBuffer[0],
+  .stack_size = sizeof(adcTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for thermocoupleTas */
+osThreadId_t thermocoupleTasHandle;
+uint32_t thermocoupleTasBuffer[ 256 ];
+osStaticThreadDef_t thermocoupleTasControlBlock;
+const osThreadAttr_t thermocoupleTas_attributes = {
+  .name = "thermocoupleTas",
+  .cb_mem = &thermocoupleTasControlBlock,
+  .cb_size = sizeof(thermocoupleTasControlBlock),
+  .stack_mem = &thermocoupleTasBuffer[0],
+  .stack_size = sizeof(thermocoupleTasBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for displayTask */
+osThreadId_t displayTaskHandle;
+uint32_t displayTaskBuffer[ 1024 ];
+osStaticThreadDef_t displayTaskControlBlock;
+const osThreadAttr_t displayTask_attributes = {
+  .name = "displayTask",
+  .cb_mem = &displayTaskControlBlock,
+  .cb_size = sizeof(displayTaskControlBlock),
+  .stack_mem = &displayTaskBuffer[0],
+  .stack_size = sizeof(displayTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for encoderTask */
+osThreadId_t encoderTaskHandle;
+uint32_t encoderTaskBuffer[ 512 ];
+osStaticThreadDef_t encoderTaskControlBlock;
+const osThreadAttr_t encoderTask_attributes = {
+  .name = "encoderTask",
+  .cb_mem = &encoderTaskControlBlock,
+  .cb_size = sizeof(encoderTaskControlBlock),
+  .stack_mem = &encoderTaskBuffer[0],
+  .stack_size = sizeof(encoderTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for ioTask */
+osThreadId_t ioTaskHandle;
+uint32_t ioTaskBuffer[ 256 ];
+osStaticThreadDef_t ioTaskControlBlock;
+const osThreadAttr_t ioTask_attributes = {
+  .name = "ioTask",
+  .cb_mem = &ioTaskControlBlock,
+  .cb_size = sizeof(ioTaskControlBlock),
+  .stack_mem = &ioTaskBuffer[0],
+  .stack_size = sizeof(ioTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for debugMenuTask */
+osThreadId_t debugMenuTaskHandle;
+uint32_t debugMenuTaskBuffer[ 1024 ];
+osStaticThreadDef_t debugMenuTaskControlBlock;
+const osThreadAttr_t debugMenuTask_attributes = {
+  .name = "debugMenuTask",
+  .cb_mem = &debugMenuTaskControlBlock,
+  .cb_size = sizeof(debugMenuTaskControlBlock),
+  .stack_mem = &debugMenuTaskBuffer[0],
+  .stack_size = sizeof(debugMenuTaskBuffer),
+  .priority = (osPriority_t) osPriorityLow,
+};
+/* Definitions for modbusTask */
+osThreadId_t modbusTaskHandle;
+uint32_t modbusTaskBuffer[ 256 ];
+osStaticThreadDef_t modbusTaskControlBlock;
+const osThreadAttr_t modbusTask_attributes = {
+  .name = "modbusTask",
+  .cb_mem = &modbusTaskControlBlock,
+  .cb_size = sizeof(modbusTaskControlBlock),
+  .stack_mem = &modbusTaskBuffer[0],
+  .stack_size = sizeof(modbusTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for usbTask */
+osThreadId_t usbTaskHandle;
+uint32_t usbTaskBuffer[ 256 ];
+osStaticThreadDef_t usbTaskControlBlock;
+const osThreadAttr_t usbTask_attributes = {
+  .name = "usbTask",
+  .cb_mem = &usbTaskControlBlock,
+  .cb_size = sizeof(usbTaskControlBlock),
+  .stack_mem = &usbTaskBuffer[0],
+  .stack_size = sizeof(usbTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for rs485_Task */
+osThreadId_t rs485_TaskHandle;
+uint32_t rs485_TaskBuffer[ 256 ];
+osStaticThreadDef_t rs485_TaskControlBlock;
+const osThreadAttr_t rs485_Task_attributes = {
+  .name = "rs485_Task",
+  .cb_mem = &rs485_TaskControlBlock,
+  .cb_size = sizeof(rs485_TaskControlBlock),
+  .stack_mem = &rs485_TaskBuffer[0],
+  .stack_size = sizeof(rs485_TaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for ethernetTask */
+osThreadId_t ethernetTaskHandle;
+uint32_t ethernetTaskBuffer[ 256 ];
+osStaticThreadDef_t ethernetTaskControlBlock;
+const osThreadAttr_t ethernetTask_attributes = {
+  .name = "ethernetTask",
+  .cb_mem = &ethernetTaskControlBlock,
+  .cb_size = sizeof(ethernetTaskControlBlock),
+  .stack_mem = &ethernetTaskBuffer[0],
+  .stack_size = sizeof(ethernetTaskBuffer),
+  .priority = (osPriority_t) osPriorityNormal,
+};
+/* Definitions for modbusQueue */
+osMessageQueueId_t modbusQueueHandle;
+uint8_t modbusQueueBuffer[ 16 * sizeof( modbus_cmd_t ) ];
+osStaticMessageQDef_t modbusQueueControlBlock;
+const osMessageQueueAttr_t modbusQueue_attributes = {
+  .name = "modbusQueue",
+  .cb_mem = &modbusQueueControlBlock,
+  .cb_size = sizeof(modbusQueueControlBlock),
+  .mq_mem = &modbusQueueBuffer,
+  .mq_size = sizeof(modbusQueueBuffer)
+};
+/* Definitions for adcQueue */
+osMessageQueueId_t adcQueueHandle;
+uint8_t adcQueueBuffer[ 4 * 16 ];
+osStaticMessageQDef_t adcQueueControlBlock;
+const osMessageQueueAttr_t adcQueue_attributes = {
+  .name = "adcQueue",
+  .cb_mem = &adcQueueControlBlock,
+  .cb_size = sizeof(adcQueueControlBlock),
+  .mq_mem = &adcQueueBuffer,
+  .mq_size = sizeof(adcQueueBuffer)
+};
+/* Definitions for debugInteropQueue */
+osMessageQueueId_t debugInteropQueueHandle;
+uint8_t debugInteropQueueBuffer[ 4 * sizeof( dbg_interop_t ) ];
+osStaticMessageQDef_t debugInteropQueueControlBlock;
+const osMessageQueueAttr_t debugInteropQueue_attributes = {
+  .name = "debugInteropQueue",
+  .cb_mem = &debugInteropQueueControlBlock,
+  .cb_size = sizeof(debugInteropQueueControlBlock),
+  .mq_mem = &debugInteropQueueBuffer,
+  .mq_size = sizeof(debugInteropQueueBuffer)
+};
+/* Definitions for motorCommandQueue */
+osMessageQueueId_t motorCommandQueueHandle;
+uint8_t motorCommandQueueBuffer[ 32 * sizeof( motor_cmd_t ) ];
+osStaticMessageQDef_t motorCommandQueueControlBlock;
+const osMessageQueueAttr_t motorCommandQueue_attributes = {
+  .name = "motorCommandQueue",
+  .cb_mem = &motorCommandQueueControlBlock,
+  .cb_size = sizeof(motorCommandQueueControlBlock),
+  .mq_mem = &motorCommandQueueBuffer,
+  .mq_size = sizeof(motorCommandQueueBuffer)
+};
+/* Definitions for srMutex */
+osMutexId_t srMutexHandle;
+osStaticMutexDef_t srMutexControlBlock;
+const osMutexAttr_t srMutex_attributes = {
+  .name = "srMutex",
+  .cb_mem = &srMutexControlBlock,
+  .cb_size = sizeof(srMutexControlBlock),
+};
+/* Definitions for spiMutex */
+osMutexId_t spiMutexHandle;
+osStaticMutexDef_t spiMutexControlBlock;
+const osMutexAttr_t spiMutex_attributes = {
+  .name = "spiMutex",
+  .cb_mem = &spiMutexControlBlock,
+  .cb_size = sizeof(spiMutexControlBlock),
+};
+/* Definitions for i2cMutex */
+osMutexId_t i2cMutexHandle;
+osStaticMutexDef_t i2cMutexControlBlock;
+const osMutexAttr_t i2cMutex_attributes = {
+  .name = "i2cMutex",
+  .cb_mem = &i2cMutexControlBlock,
+  .cb_size = sizeof(i2cMutexControlBlock),
 };
 
 /* Private function prototypes -----------------------------------------------*/
@@ -60,7 +256,17 @@ const osThreadAttr_t defaultTask_attributes = {
 
 /* USER CODE END FunctionPrototypes */
 
-void StartDefaultTask(void *argument);
+void StartMainTask(void *argument);
+extern void StartAdcTask(void *argument);
+extern void StartThermocoupleTask(void *argument);
+extern void StartDisplayTask(void *argument);
+extern void StartEncoderTask(void *argument);
+extern void StartIoTask(void *argument);
+extern void StartDebugMenuTask(void *argument);
+extern void StartModbusTask(void *argument);
+extern void StartUsbTask(void *argument);
+extern void StartRs485Task(void *argument);
+extern void StartEthernetTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
 
@@ -101,22 +307,22 @@ void MX_FREERTOS_Init(void) {
   */
 }
 
-/* USER CODE BEGIN Header_StartDefaultTask */
+/* USER CODE BEGIN Header_StartMainTask */
 /**
   * @brief  Function implementing the defaultTask thread.
   * @param  argument: Not used
   * @retval None
   */
-/* USER CODE END Header_StartDefaultTask */
-void StartDefaultTask(void *argument)
+/* USER CODE END Header_StartMainTask */
+__weak void StartMainTask(void *argument)
 {
-  /* USER CODE BEGIN StartDefaultTask */
+  /* USER CODE BEGIN StartMainTask */
   /* Infinite loop */
   for(;;)
   {
     osDelay(1);
   }
-  /* USER CODE END StartDefaultTask */
+  /* USER CODE END StartMainTask */
 }
 
 /* Private application code --------------------------------------------------*/
