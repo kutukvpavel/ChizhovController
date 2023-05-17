@@ -1,15 +1,21 @@
 #include "user.h"
 
+#include "sr_io.h"
+#include "compat_api.h"
+
 _BEGIN_STD_C
 
 void StartMainTask(void *argument)
 {
-    
-}
+    const uint32_t delay = 1;
+    static TickType_t last_wake;
 
-void StartAdcTask(void *argument)
-{
+    last_wake = xTaskGetTickCount();
 
+    for (;;)
+    {
+        vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
+    }
 }
 
 void StartThermocoupleTask(void *argument)
@@ -17,22 +23,7 @@ void StartThermocoupleTask(void *argument)
 
 }
 
-void StartDisplayTask(void *argument)
-{
-
-}
-
 void StartEncoderTask(void *argument)
-{
-
-}
-
-void StartIoTask(void *argument)
-{
-
-}
-
-void StartModbusTask(void *argument)
 {
 
 }

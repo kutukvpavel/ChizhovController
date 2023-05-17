@@ -37,8 +37,11 @@ cFlags:
   - -Wall
   - -fdata-sections
   - -ffunction-sections
+  - -std=gnu99
 
-cxxFlags: []
+cxxFlags:
+  - -std=c++11
+
 assemblyFlags: 
   - -Wall
   - -fdata-sections

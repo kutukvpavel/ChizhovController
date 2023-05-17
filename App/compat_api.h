@@ -6,9 +6,10 @@
 
 namespace compat
 {
+    void uDelay(uint32_t us);
+
     inline uint32_t micros()
     {
         return MY_TIM_MICROS->CNT;
     }
-    void uDelay(uint32_t us);
 } // namespace compat

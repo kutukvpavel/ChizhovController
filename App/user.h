@@ -3,9 +3,9 @@
 #include "../Middlewares/Third_Party/FreeRTOS/Source/include/FreeRTOS.h"
 #include "../Middlewares/Third_Party/FreeRTOS/Source/include/task.h"
 #include "../Middlewares/Third_Party/FreeRTOS/Source/include/queue.h"
-#include "../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h
+#include "../Middlewares/Third_Party/FreeRTOS/Source/include/semphr.h"
 
-#include "types.h"
+#include "my_types.h"
 #include "main.h"
 
 #include <stdio.h>

@@ -36,6 +36,9 @@ BUILD_DIR = build
 ######################################
 # C sources
 C_SOURCES =  \
+App/interrupt_callbacks.c \
+App/modbus/MODBUS-LIB/Src/Modbus.c \
+App/modbus/MODBUS-LIB/Src/UARTCallback.c \
 App/ushell/src/sys_command_line.c \
 App/ushell/src/sys_queue.c \
 Core/Src/adc.c \
@@ -83,7 +86,11 @@ Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_tim_ex.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_hal_uart.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_adc.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_exti.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_gpio.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_rcc.c \
 Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_usb.c \
+Drivers/STM32F4xx_HAL_Driver/Src/stm32f4xx_ll_utils.c \
 Middlewares/Third_Party/FreeRTOS/Source/CMSIS_RTOS_V2/cmsis_os2.c \
 Middlewares/Third_Party/FreeRTOS/Source/croutine.c \
 Middlewares/Third_Party/FreeRTOS/Source/event_groups.c \
@@ -97,8 +104,11 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c
 
 
 CPP_SOURCES = \
+App/a_io.cpp \
+App/compat_api.cpp \
 App/dbg_shell.cpp \
 App/display.cpp \
+App/motor.cpp \
 App/sr_io.cpp \
 App/user.cpp
 
@@ -156,6 +166,7 @@ AS_DEFS =
 C_DEFS =  \
 -DSTM32F401xC \
 -DSTM32_THREAD_SAFE_STRATEGY=4 \
+-DUSE_FULL_LL_DRIVER \
 -DUSE_HAL_DRIVER
 
 
@@ -163,6 +174,7 @@ C_DEFS =  \
 CXX_DEFS =  \
 -DSTM32F401xC \
 -DSTM32_THREAD_SAFE_STRATEGY=4 \
+-DUSE_FULL_LL_DRIVER \
 -DUSE_HAL_DRIVER
 
 
@@ -172,6 +184,7 @@ AS_INCLUDES = \
 # C includes
 C_INCLUDES =  \
 -IApp \
+-IApp/modbus/MODBUS-LIB/Inc \
 -IApp/ushell/inc \
 -ICore/Inc \
 -IDrivers/CMSIS/Device/ST/STM32F4xx/Include \
@@ -197,9 +210,9 @@ CXXFLAGS += -g -gdwarf -ggdb
 endif
 
 # Add additional flags
-CFLAGS += -Wall -fdata-sections -ffunction-sections 
+CFLAGS += -Wall -fdata-sections -ffunction-sections -std=gnu99 
 ASFLAGS += -Wall -fdata-sections -ffunction-sections 
-CXXFLAGS += 
+CXXFLAGS += -std=c++11 
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"

@@ -27,6 +27,7 @@ namespace cli_commands
     uint8_t info(int argc, char** argv)
     {
         puts(MY_FIRMWARE_INFO_STR);
+        return 0;
     }
 } // namespace cli_commands
 

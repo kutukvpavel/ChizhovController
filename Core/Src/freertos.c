@@ -25,7 +25,6 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-#include "../../App/types.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -132,18 +131,6 @@ const osThreadAttr_t debugMenuTask_attributes = {
   .stack_size = sizeof(debugMenuTaskBuffer),
   .priority = (osPriority_t) osPriorityLow,
 };
-/* Definitions for modbusTask */
-osThreadId_t modbusTaskHandle;
-uint32_t modbusTaskBuffer[ 256 ];
-osStaticThreadDef_t modbusTaskControlBlock;
-const osThreadAttr_t modbusTask_attributes = {
-  .name = "modbusTask",
-  .cb_mem = &modbusTaskControlBlock,
-  .cb_size = sizeof(modbusTaskControlBlock),
-  .stack_mem = &modbusTaskBuffer[0],
-  .stack_size = sizeof(modbusTaskBuffer),
-  .priority = (osPriority_t) osPriorityNormal,
-};
 /* Definitions for usbTask */
 osThreadId_t usbTaskHandle;
 uint32_t usbTaskBuffer[ 256 ];
@@ -193,7 +180,6 @@ extern void StartDisplayTask(void *argument);
 extern void StartEncoderTask(void *argument);
 extern void StartIoTask(void *argument);
 extern void StartDebugMenuTask(void *argument);
-extern void StartModbusTask(void *argument);
 extern void StartUsbTask(void *argument);
 extern void StartRs485Task(void *argument);
 extern void StartEthernetTask(void *argument);
@@ -216,7 +202,6 @@ void MX_FREERTOS_Init(void) {
   osThreadNew(StartEncoderTask, NULL, &encoderTask_attributes);
   osThreadNew(StartIoTask, NULL, &ioTask_attributes);
   osThreadNew(StartDebugMenuTask, NULL, &debugMenuTask_attributes);
-  osThreadNew(StartModbusTask, NULL, &modbusTask_attributes);
   osThreadNew(StartUsbTask, NULL, &usbTask_attributes);
   osThreadNew(StartRs485Task, NULL, &rs485_Task_attributes);
   osThreadNew(StartEthernetTask, NULL, &ethernetTask_attributes);
