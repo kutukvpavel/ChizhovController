@@ -105,6 +105,7 @@ Middlewares/Third_Party/FreeRTOS/Source/timers.c
 
 CPP_SOURCES = \
 App/a_io.cpp \
+App/average/average.cpp \
 App/compat_api.cpp \
 App/dbg_shell.cpp \
 App/display.cpp \
@@ -184,6 +185,7 @@ AS_INCLUDES = \
 # C includes
 C_INCLUDES =  \
 -IApp \
+-IApp/average \
 -IApp/modbus/MODBUS-LIB/Inc \
 -IApp/ushell/inc \
 -ICore/Inc \
@@ -225,7 +227,7 @@ CXXFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
 LDSCRIPT = STM32F401CCUx_FLASH.ld
 
 # libraries
-LIBS = -lc -lm -lnosys 
+LIBS = -lc -lm -lnosys -lstdc++ 
 LIBDIR = \
 
 

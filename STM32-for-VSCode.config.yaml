@@ -53,6 +53,7 @@ linkerFlags: []
 libraries: 
   - c
   - m
+  - stdc++
 
 # Library directories. Folders can be added here that contain custom libraries.
 libraryDirectories: []

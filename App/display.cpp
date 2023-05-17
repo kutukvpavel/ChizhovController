@@ -1,15 +1,18 @@
 #include "user.h"
 #include "sr_io.h"
 
+#include <string.h>
+
 #define REGULAR_REPAINT_DELAY_MS 50
 #define MISSED_REPAINT_DELAY_MS 3
 #define DISPLAY_CHANNELS 3
+#define DIGITS_PER_CHANNEL 4
 
 namespace display
 {
     struct __packed single_channel_map
     {
-        uint8_t digits[4];
+        uint8_t digits[DIGITS_PER_CHANNEL];
         uint8_t leds[2];
     };
     single_channel_map buffer[DISPLAY_CHANNELS];
@@ -26,7 +29,14 @@ namespace display
 
     void compose()
     {
-        
+        static char temp[DIGITS_PER_CHANNEL + 1];
+
+        for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
+        {
+            snprintf(temp, DIGITS_PER_CHANNEL, "%f", ); //TODO: take from pump manager
+            memcpy(buffer[i].digits, temp, DIGITS_PER_CHANNEL);
+        }
+        //TODO: LEDs
     }
 } // namespace display
 
