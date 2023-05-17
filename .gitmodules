@@ -4,3 +4,6 @@
 [submodule "App/modbus"]
 	path = App/modbus
 	url = https://github.com/kutukvpavel/Modbus-STM32-HAL-FreeRTOS.git
+[submodule "App/average"]
+	path = App/average
+	url = https://github.com/kutukvpavel/average_lib.git
