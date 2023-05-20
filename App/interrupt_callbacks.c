@@ -1,5 +1,5 @@
-#include "main.h"
-#include "Modbus.h"
+#include "user.h"
+#include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "sys_command_line.h"
 
 void HAL_UART_TxCpltCallback(UART_HandleTypeDef *huart)
@@ -18,5 +18,5 @@ void HAL_UART_RxCpltCallback(UART_HandleTypeDef *huart)
 void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
 {
     if (hadc->Instance != ADC1) return;
-    
+    xTaskNotifyFromISR();
 }

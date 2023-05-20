@@ -110,6 +110,7 @@ App/compat_api.cpp \
 App/dbg_shell.cpp \
 App/display.cpp \
 App/motor.cpp \
+App/pumps.cpp \
 App/sr_io.cpp \
 App/user.cpp
 
