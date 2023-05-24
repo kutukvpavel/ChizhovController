@@ -4,6 +4,8 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+#define PACKED_FOR_MODBUS __packed __aligned(sizeof(float))
+
 typedef struct
 {
 
@@ -26,3 +28,8 @@ typedef struct
     motor_cmds cmd;
     
 } motor_cmd_t;
+
+#ifdef __cplusplus
+    template <typename T, size_t N>
+    constexpr size_t array_size(T (&)[N]) { return N; }
+#endif

@@ -1,9 +1,14 @@
 #include "motor.h"
 
-motor::motor(/* args */)
+motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir) : timer(tim), pin_dir(dir)
 {
 }
 
-motor::~motor()
+motor_t::~motor_t()
 {
+}
+
+void motor_t::set_volume_rate(float v)
+{
+
 }
