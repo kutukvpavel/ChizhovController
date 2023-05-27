@@ -1,5 +1,6 @@
 #include "user.h"
 #include "sr_io.h"
+#include "pumps.h"
 
 #include <string.h>
 
@@ -30,10 +31,11 @@ namespace display
     void compose()
     {
         static char temp[DIGITS_PER_CHANNEL + 1];
+        static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
-            snprintf(temp, DIGITS_PER_CHANNEL, "%f", ); //TODO: take from pump manager
+            snprintf(temp, DIGITS_PER_CHANNEL + 1, "%5f", pumps::get_indicated_speed(i)); //TODO: take from pump manager
             memcpy(buffer[i].digits, temp, DIGITS_PER_CHANNEL);
         }
         //TODO: LEDs
