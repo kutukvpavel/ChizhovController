@@ -105,8 +105,7 @@ namespace sr_io
 
 
 _BEGIN_STD_C
-
-void StartIoTask(void *argument)
+STATIC_TASK_BODY(MY_IO);
 {
     static TickType_t last_sync;
     static uint32_t delay = sr_io::regular_sync_delay_ms;
@@ -120,5 +119,4 @@ void StartIoTask(void *argument)
         delay = (sr_io::sync_io() == HAL_OK) ? sr_io::regular_sync_delay_ms : sr_io::missed_sync_delay_ms;
     }
 }
-
 _END_STD_C
