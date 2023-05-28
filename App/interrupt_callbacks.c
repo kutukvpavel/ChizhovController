@@ -21,6 +21,6 @@ void HAL_ADC_ConvCpltCallback(ADC_HandleTypeDef* hadc)
     if (hadc->Instance != ADC1) return;
 
 	BaseType_t woken;
-    vTaskNotifyGiveFromISR(adc_task_handle, &woken);
+    vTaskNotifyGiveFromISR(STATIC_TASK_HANDLE(MY_ADC), &woken);
 	portYIELD_FROM_ISR(woken);
 }

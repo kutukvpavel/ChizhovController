@@ -1,6 +1,8 @@
 #include "user.h"
+
 #include "sr_io.h"
 #include "pumps.h"
+#include "task_handles.h"
 
 #include <string.h>
 
@@ -16,7 +18,7 @@ namespace display
         uint8_t digits[DIGITS_PER_CHANNEL];
         uint8_t leds[2];
     };
-    single_channel_map buffer[DISPLAY_CHANNELS];
+    single_channel_map buffer[DISPLAY_CHANNELS] = { {}, {}, {} };
 
     void init()
     {
@@ -35,7 +37,7 @@ namespace display
 
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
-            snprintf(temp, DIGITS_PER_CHANNEL + 1, "%5f", pumps::get_indicated_speed(i)); //TODO: take from pump manager
+            snprintf(temp, DIGITS_PER_CHANNEL + 1, "%4f", pumps::get_indicated_speed(i));
             memcpy(buffer[i].digits, temp, DIGITS_PER_CHANNEL);
         }
         //TODO: LEDs
@@ -43,8 +45,7 @@ namespace display
 } // namespace display
 
 _BEGIN_STD_C
-
-void StartDisplayTask(void *argument)
+STATIC_TASK_BODY(MY_DISP)
 {
     static TickType_t last_repaint;
     static uint32_t delay = REGULAR_REPAINT_DELAY_MS;
@@ -59,5 +60,4 @@ void StartDisplayTask(void *argument)
         delay = (display::repaint() == HAL_OK) ? REGULAR_REPAINT_DELAY_MS : MISSED_REPAINT_DELAY_MS;
     }
 }
-
 _END_STD_C

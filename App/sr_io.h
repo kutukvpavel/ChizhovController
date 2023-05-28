@@ -7,7 +7,7 @@ namespace sr_io
     const uint32_t regular_sync_delay_ms = 100;
     const uint32_t missed_sync_delay_ms = 3;
 
-    enum in
+    enum in : size_t
     {
         IN_OPTO3,
         IN_OPTO2,
@@ -28,7 +28,7 @@ namespace sr_io
 
         IN_LEN
     };
-    enum out
+    enum out : size_t
     {
         OC0,
         OC1,

@@ -82,6 +82,7 @@ includeDirectories:
   - Core/Src/**
   - Core/Lib/**
   - Middlewares/Third_Party/FreeRTOS/Source/include/**
+  - App/modbus/MODBUS-LIB/Inc/**
 
 
 # Files that should be included in the compilation.
@@ -94,6 +95,7 @@ sourceFiles:
   - Core/Src/**
   - Core/Lib/**
   - App/**
+  - App/modbus/MODBUS-LIB/Src/**
 
 
 # When no makefile is present it will show a warning pop-up.

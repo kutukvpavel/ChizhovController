@@ -2,12 +2,12 @@
 
 #include "ushell/inc/sys_command_line.h"
 #include "../Core/Inc/usart.h"
+#include "task_handles.h"
 
 static void init();
 
 _BEGIN_STD_C
-
-void StartDebugMenuTask(void *argument)
+STATIC_TASK_BODY(MY_CLI)
 {
     //Init debug commands
     init();
@@ -19,7 +19,6 @@ void StartDebugMenuTask(void *argument)
         vTaskDelay(pdMS_TO_TICKS(20));
     }
 }
-
 _END_STD_C
 
 namespace cli_commands

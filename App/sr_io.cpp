@@ -2,6 +2,7 @@
 
 #include "../Core/Inc/gpio.h"
 #include "compat_api.h"
+#include "task_handles.h"
 
 typedef uint32_t sr_buf_t;
 
@@ -28,6 +29,7 @@ namespace sr_io
 {
     static SemaphoreHandle_t srMutexHandle = NULL;
     static StaticSemaphore_t srMutexBuffer;
+    static bool initialized = false;
 
     static sr_buf_t input_buffer[BUF_LEN(in::IN_LEN)];
     static sr_buf_t output_buffer[BUF_LEN(out::OUT_LEN)];
@@ -43,10 +45,13 @@ namespace sr_io
             gpio_positive_pulse_pin(OUT_SH_GPIO_Port, OUT_SH_Pin); //Clear the registers
         }
         LL_GPIO_SetOutputPin(IO_ST_GPIO_Port, IO_ST_Pin);
+
+        initialized = true;
     }
 
     HAL_StatusTypeDef sync_io(uint32_t wait = missed_sync_delay_ms)
     {
+        if (!initialized) return HAL_ERROR;
         if (xSemaphoreTake(srMutexHandle, pdMS_TO_TICKS(wait)) != pdTRUE) return HAL_ERROR;
 
         //Write output register
@@ -94,9 +99,20 @@ namespace sr_io
 
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait)
     {
+        if (!initialized) return HAL_ERROR;
         if (xSemaphoreTake(srMutexHandle, pdMS_TO_TICKS(wait)) != pdTRUE) return HAL_ERROR;
 
-        
+        for (size_t i = 0; i < len; i++)
+        {
+            for (size_t j = 0; j < __CHAR_BIT__; j++)
+            {
+                HAL_GPIO_WritePin(SR_D_GPIO_Port, SR_D_Pin,
+                    (reinterpret_cast<const uint8_t*>(data)[i] & BV(j)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                compat::uDelay(1);
+                gpio_positive_pulse_pin(DISP_SH_GPIO_Port, DISP_SH_Pin);
+            }
+        }
+        gpio_positive_pulse_pin(DISP_ST_GPIO_Port, DISP_ST_Pin);
 
         xSemaphoreGive(srMutexHandle);
         return HAL_OK;
@@ -105,7 +121,7 @@ namespace sr_io
 
 
 _BEGIN_STD_C
-STATIC_TASK_BODY(MY_IO);
+STATIC_TASK_BODY(MY_IO)
 {
     static TickType_t last_sync;
     static uint32_t delay = sr_io::regular_sync_delay_ms;
