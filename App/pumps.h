@@ -16,4 +16,5 @@ namespace pumps
 
     void init(const params_t* p);
     void set_enable(bool v);
+    float get_indicated_speed(size_t i);
 } // namespace pumps

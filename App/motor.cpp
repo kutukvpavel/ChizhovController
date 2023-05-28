@@ -10,5 +10,10 @@ motor_t::~motor_t()
 
 void motor_t::set_volume_rate(float v)
 {
+    
+}
+
+float motor_t::get_volume_rate()
+{
 
 }

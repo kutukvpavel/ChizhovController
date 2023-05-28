@@ -21,4 +21,5 @@ public:
     ~motor_t();
 
     void set_volume_rate(float v);
+    float get_volume_rate();
 };

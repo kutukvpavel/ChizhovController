@@ -1,4 +1,4 @@
-#include "pumps.h"
+#include "pumps.h"s
 
 #include "tim.h"
 #include "sr_io.h"
@@ -20,5 +20,14 @@ namespace pumps
     void set_enable(bool v)
     {
         sr_io::set_output(sr_io::out::MOTORS_EN, params->invert_enable ? !v : v);
+    }
+    float get_indicated_speed(size_t i)
+    {
+        assert_param(i < MY_PUMPS_NUM);
+        return motors[i].get_volume_rate();
+    }
+    void set_indicated_speed(float v)
+    {
+
     }
 } // namespace pumps
