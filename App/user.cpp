@@ -5,6 +5,7 @@
 #include "nvs.h"
 #include "task_handles.h"
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
+#include "wdt.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -19,7 +20,7 @@ void app_main();
 DEFINE_STATIC_TASK(MY_CLI, 1024);
 DEFINE_STATIC_TASK(MY_ADC, 256);
 DEFINE_STATIC_TASK(MY_IO, 256);
-DEFINE_STATIC_TASK(MY_ENC, 512);
+DEFINE_STATIC_TASK(MY_COPROC, 512);
 DEFINE_STATIC_TASK(MY_THERMO, 256);
 DEFINE_STATIC_TASK(MY_DISP, 1024);
 
@@ -30,14 +31,16 @@ void StartMainTask(void *argument)
 {
     const uint32_t delay = 10;
     static TickType_t last_wake;
-
+    static wdt::task_t* pwdt;
+    
+    pwdt = wdt::register_task(500);
     nvs::init();
     ModbusInit(&modbus);
 
     START_STATIC_TASK(MY_CLI, 1);
     START_STATIC_TASK(MY_ADC, 1);
     START_STATIC_TASK(MY_IO, 1);
-    START_STATIC_TASK(MY_ENC, 1);
+    START_STATIC_TASK(MY_COPROC, 1);
     START_STATIC_TASK(MY_THERMO, 1);
     START_STATIC_TASK(MY_DISP, 1);
 
@@ -48,17 +51,8 @@ void StartMainTask(void *argument)
     {
         app_main();
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
+        pwdt->last_time = last_wake;
     }
-}
-
-STATIC_TASK_BODY(MY_THERMO)
-{
-
-}
-
-STATIC_TASK_BODY(MY_ENC)
-{
-
 }
 _END_STD_C
 
@@ -74,6 +68,8 @@ void supervize_led(led_states s);
 void app_main()
 {
     static led_states led = led_states::HEARTBEAT;
+
+    
 
     supervize_led(led);
 }

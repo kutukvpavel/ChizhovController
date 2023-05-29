@@ -74,6 +74,7 @@ excludes:
 # Include directories (directories containing .h or .hpp files)
 # If a CubeMX makefile is present it will automatically include the include directories from that makefile.
 includeDirectories: 
+  - App/modbus/MODBUS-LIB/Inc/*
   - App/**
   - Inc/**
   - Core/Inc/**
@@ -82,7 +83,6 @@ includeDirectories:
   - Core/Src/**
   - Core/Lib/**
   - Middlewares/Third_Party/FreeRTOS/Source/include/**
-  - App/modbus/MODBUS-LIB/Inc/**
 
 
 # Files that should be included in the compilation.
@@ -91,11 +91,11 @@ includeDirectories:
 # Do mind that double stars are reserved in yaml
 # these should be escaped with a: \ or the name should be in double quotes e.g. "HARDWARE_DRIVER*.c"
 sourceFiles:  
+  - App/modbus/MODBUS-LIB/Src/*
   - Src/**
   - Core/Src/**
   - Core/Lib/**
   - App/**
-  - App/modbus/MODBUS-LIB/Src/**
 
 
 # When no makefile is present it will show a warning pop-up.

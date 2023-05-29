@@ -1,5 +1,6 @@
 #include "a_io.h"
 
+#include "task_handles.h"
 #include "average/average.h"
 
 #define PACKED_FOR_DMA __aligned(sizeof(uint32_t))
@@ -53,8 +54,7 @@ namespace a_io
 } // namespace a_io
 
 _BEGIN_STD_C
-
-void StartAdcTask(void *argument)
+STATIC_TASK_BODY(MY_ADC)
 {
     a_io::init();
 
@@ -64,5 +64,4 @@ void StartAdcTask(void *argument)
         a_io::process_data();
     }
 }
-
 _END_STD_C
