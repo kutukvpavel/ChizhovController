@@ -2,12 +2,16 @@
 
 #include "task_handles.h"
 #include "wdt.h"
+#include "i2c_sync.h"
 
 #define MAX_ENCODERS 3
+#define COPROCESSOR_ADDR 0x08
+#define PACKED_FOR_I2C __packed __aligned(sizeof(uint32_t))
+#define RETRIES 3
 
 namespace coprocessor
 {
-    struct memory_map_t
+    struct PACKED_FOR_I2C memory_map_t
     {
         uint32_t encoder_pos[MAX_ENCODERS];
         uint16_t manual_override;
@@ -15,15 +19,24 @@ namespace coprocessor
         uint8_t drv_missing_bitfield;
     };
     memory_map_t buffer = {};
+    SemaphoreHandle_t sync_mutex = NULL;
 
-    void init()
+    HAL_StatusTypeDef init()
     {
-
+        sync_mutex = xSemaphoreCreateMutex();
+        return sync_mutex ? HAL_OK : HAL_ERROR;
     }
 
     void sync()
     {
+        if (xSemaphoreTake(sync_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return;
 
+        int retries = RETRIES;
+        while (retries--)
+        {
+            if (i2c::mem_read(COPROCESSOR_ADDR, 0, reinterpret_cast<uint8_t*>(&buffer), sizeof(buffer)) == HAL_OK) break;
+        }
+        xSemaphoreGive(sync_mutex);
     }
 
     uint32_t get_encoder_value(size_t i)
@@ -31,6 +44,17 @@ namespace coprocessor
         assert_param(i < MAX_ENCODERS);
 
         return buffer.encoder_pos[i];
+    }
+    float get_manual_override()
+    {
+        const float max = 1.0f;
+        const float min = 0.01f;
+        const float span = 1024.0f * 0.9f;
+
+        float res = buffer.manual_override / span;
+        if (res > max) res = max;
+        if (res < min) res = min;
+        return res;
     }
 } // namespace coprocessor
 
@@ -43,7 +67,7 @@ STATIC_TASK_BODY(MY_COPROC)
 
     pwdt = wdt::register_task(500);
 
-    coprocessor::init();
+    if (coprocessor::init() != HAL_OK) while (1); //wdt will reset the controller
 
     for (;;)
     {

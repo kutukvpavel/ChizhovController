@@ -3,8 +3,12 @@
 #include "task_handles.h"
 #include "wdt.h"
 
+#include <math.h>
+
 namespace thermo
 {
+    float channels[MY_TEMP_CHANNEL_NUM] = { NAN, NAN };
+
     void init()
     {
 
@@ -13,6 +17,11 @@ namespace thermo
     void sync()
     {
         
+    }
+
+    float get_temperature(size_t i)
+    {
+
     }
 } // namespace thermo
 

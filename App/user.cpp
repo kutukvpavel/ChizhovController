@@ -6,6 +6,7 @@
 #include "task_handles.h"
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "wdt.h"
+#include "i2c_sync.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -34,7 +35,8 @@ void StartMainTask(void *argument)
     static wdt::task_t* pwdt;
     
     pwdt = wdt::register_task(500);
-    nvs::init();
+    i2c::init();
+    if (nvs::init() == HAL_OK) nvs::load();
     ModbusInit(&modbus);
 
     START_STATIC_TASK(MY_CLI, 1);

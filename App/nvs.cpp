@@ -1,6 +1,6 @@
 #include "nvs.h"
 
-#include "i2c.h"
+#include "i2c_sync.h"
 
 #define MY_EEPROM_ADDR 0xA0
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
@@ -10,6 +10,7 @@
 #define MY_NVS_PAGE_SIZE 8u
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
+#define MY_RETRIES 3
 
 namespace nvs
 {
@@ -25,7 +26,15 @@ namespace nvs
     HAL_StatusTypeDef eeprom_read(uint16_t addr, uint8_t* buf, uint16_t len)
     {
         assert_param((addr + len) < MY_NVS_TOTAL_SIZE);
-        return HAL_I2C_Mem_Read(&hi2c2, MY_NVS_I2C_ADDR(addr), addr & 0xFF, I2C_MEMADD_SIZE_8BIT, buf, len, 1000);
+        
+        HAL_StatusTypeDef ret = HAL_ERROR;
+        int retries = MY_RETRIES;
+        while (retries--)
+        {
+            ret = i2c::mem_read(MY_NVS_I2C_ADDR(addr), addr & 0xFF, buf, len);
+            if (ret == HAL_OK) break;
+        }
+        return ret;
     }
     HAL_StatusTypeDef eeprom_write(uint16_t addr, uint8_t* buf, uint16_t len)
     {
@@ -39,8 +48,7 @@ namespace nvs
         uint16_t current_page_addr = addr;
         for (size_t i = 0; i < full_pages; i++)
         {
-            status = HAL_I2C_Mem_Write(&hi2c2, MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, I2C_MEMADD_SIZE_8BIT, 
-                buf, MY_NVS_PAGE_SIZE, 1000);
+            status = i2c::mem_write(MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, buf, MY_NVS_PAGE_SIZE);
             if (status != HAL_OK) break;
             buf += MY_NVS_PAGE_SIZE;
             current_page_addr += MY_NVS_PAGE_SIZE;
@@ -49,8 +57,7 @@ namespace nvs
         if (status != HAL_OK) return status;
         if (remainder > 0)
         {
-            status = HAL_I2C_Mem_Write(&hi2c2, MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, I2C_MEMADD_SIZE_8BIT, 
-                buf, remainder, 1000);
+            status = i2c::mem_write(MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, buf, remainder);
         }
         return status;
     }
