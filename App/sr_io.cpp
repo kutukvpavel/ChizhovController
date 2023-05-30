@@ -11,19 +11,21 @@ typedef uint32_t sr_buf_t;
 #define BIT_TO_WORD_IDX(b) ((b) / BUF_WORD_BITS)
 #define BIT_REMAINDER_IDX(b) ((b) % BUF_WORD_BITS) 
 #define BV(b) (1u << (b))
+#define ACQUIRE_MUTEX() if (xSemaphoreTake(srMutexHandle, pdMS_TO_TICKS(wait)) != pdTRUE) return HAL_ERROR
+#define RELEASE_MUTEX() xSemaphoreGive(srMutexHandle)
 
-    inline void gpio_positive_pulse_pin(GPIO_TypeDef* port, uint32_t mask, uint32_t delay = 1)
-    {
-        LL_GPIO_SetOutputPin(port, mask);
-        compat::uDelay(delay);
-        LL_GPIO_ResetOutputPin(port, mask);
-    }
-    inline void gpio_negative_pulse_pin(GPIO_TypeDef* port, uint32_t mask, uint32_t delay = 1)
-    {
-        LL_GPIO_ResetOutputPin(port, mask);
-        compat::uDelay(delay);
-        LL_GPIO_SetOutputPin(port, mask);
-    }
+inline void gpio_positive_pulse_pin(GPIO_TypeDef *port, uint32_t mask, uint32_t delay = 1)
+{
+    LL_GPIO_SetOutputPin(port, mask);
+    compat::uDelay(delay);
+    LL_GPIO_ResetOutputPin(port, mask);
+}
+inline void gpio_negative_pulse_pin(GPIO_TypeDef *port, uint32_t mask, uint32_t delay = 1)
+{
+    LL_GPIO_ResetOutputPin(port, mask);
+    compat::uDelay(delay);
+    LL_GPIO_SetOutputPin(port, mask);
+}
 
 namespace sr_io
 {
@@ -52,7 +54,7 @@ namespace sr_io
     HAL_StatusTypeDef sync_io(uint32_t wait = missed_sync_delay_ms)
     {
         if (!initialized) return HAL_ERROR;
-        if (xSemaphoreTake(srMutexHandle, pdMS_TO_TICKS(wait)) != pdTRUE) return HAL_ERROR;
+        ACQUIRE_MUTEX();
 
         //Write output register
         for (size_t i = 0; i < out::OUT_LEN; i++)
@@ -78,7 +80,7 @@ namespace sr_io
             gpio_positive_pulse_pin(IN_SH_GPIO_Port, IN_SH_Pin);
         }
 
-        xSemaphoreGive(srMutexHandle);
+        RELEASE_MUTEX();
         return HAL_OK;
     }   
     bool get_input(in i)
@@ -100,7 +102,7 @@ namespace sr_io
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait)
     {
         if (!initialized) return HAL_ERROR;
-        if (xSemaphoreTake(srMutexHandle, pdMS_TO_TICKS(wait)) != pdTRUE) return HAL_ERROR;
+        ACQUIRE_MUTEX();
 
         for (size_t i = 0; i < len; i++)
         {
@@ -114,7 +116,7 @@ namespace sr_io
         }
         gpio_positive_pulse_pin(DISP_ST_GPIO_Port, DISP_ST_Pin);
 
-        xSemaphoreGive(srMutexHandle);
+        RELEASE_MUTEX();
         return HAL_OK;
     }
 } // namespace sr_io

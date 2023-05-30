@@ -34,7 +34,7 @@ namespace coprocessor
         int retries = RETRIES;
         while (retries--)
         {
-            if (i2c::mem_read(COPROCESSOR_ADDR, 0, reinterpret_cast<uint8_t*>(&buffer), sizeof(buffer)) == HAL_OK) break;
+            if (i2c::read(COPROCESSOR_ADDR, reinterpret_cast<uint8_t*>(&buffer), sizeof(buffer)) == HAL_OK) break;
         }
         xSemaphoreGive(sync_mutex);
     }
@@ -42,16 +42,24 @@ namespace coprocessor
     uint32_t get_encoder_value(size_t i)
     {
         assert_param(i < MAX_ENCODERS);
+        assert_param(sync_mutex);
 
-        return buffer.encoder_pos[i];
+        while (xSemaphoreTake(sync_mutex, portMAX_DELAY) != pdTRUE);
+        uint32_t ret = buffer.encoder_pos[i];
+        xSemaphoreGive(sync_mutex);
+        return ret;
     }
     float get_manual_override()
     {
         const float max = 1.0f;
         const float min = 0.01f;
         const float span = 1024.0f * 0.9f;
+        assert_param(sync_mutex);
 
+        while (xSemaphoreTake(sync_mutex, portMAX_DELAY) != pdTRUE);
         float res = buffer.manual_override / span;
+        xSemaphoreGive(sync_mutex);
+        
         if (res > max) res = max;
         if (res < min) res = min;
         return res;

@@ -2,8 +2,9 @@
 
 #include "task_handles.h"
 #include "average/average.h"
+#include "../Core/Inc/adc.h"
 
-#define PACKED_FOR_DMA __aligned(sizeof(uint32_t))
+#define PACKED_FOR_DMA __packed __aligned(sizeof(uint32_t))
 #define CHANNEL_REPETITION 4
 #define MAP(i) { &buffer[i].ch_8, &buffer[i].ch_9, &buffer[i].vbat, &buffer[i].vref }
 
@@ -31,16 +32,25 @@ namespace a_io
         {
             ch[i].a = new average(10);
         }
+        //Here sizeof()-magic is not intended to compute array size, ignore the warning
+        //[ instead it computes whole DMA buffer length in half-words ]
+        HAL_ADC_Start_DMA(&hadc1, reinterpret_cast<uint32_t*>(&buffer), sizeof(buffer) / sizeof(uint16_t));
     }
 
     void process_data()
     {
+        for (size_t i = 0; i < CHANNEL_REPETITION; i++)
+        {
+            ch[in::vref].a->enqueue(__LL_ADC_CALC_VREFANALOG_VOLTAGE(*(mappings[i][in::vref]), LL_ADC_RESOLUTION_12B));
+        }
+        ch[in::vref].v = ch[in::vref].a->get_average();
         for (size_t j = 0; j < CHANNEL_REPETITION; j++)
         {
             for (size_t i = 0; i < in::LEN; i++)
             {
-                auto& c = ch[i];
-                c.a->enqueue(*(mappings[j][i]) ); //TODO
+                if (i == in::vref) continue;
+                ch[i].a->enqueue(__LL_ADC_CALC_DATA_TO_VOLTAGE(ch[in::vref].v, *(mappings[j][i]), LL_ADC_RESOLUTION_12B));
+                ch[i].v = ch[i].a->get_average();
             }
         }
     }

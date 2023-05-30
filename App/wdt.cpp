@@ -18,20 +18,19 @@ namespace wdt
       return instance;
    }
 
-   void process()
+   void process(TickType_t now)
    {
-      TickType_t now = xTaskGetTickCount();
-      size_t i;
-      for(i = 0; i < registered_tasks; ++i ){
+      for(size_t i = 0; i < registered_tasks; i++){
          TickType_t diff = now - tasks[ i ].last_time;
-         if(  diff > tasks[ i ].deadline ) break;
-      }
-      if( i == registered_tasks ) HAL_IWDG_Refresh(&hiwdg);
-      else 
-      {
-         vTaskSuspendAll();
-         taskDISABLE_INTERRUPTS();
-         while( 1 );
+         if( diff > tasks[i].deadline )
+         {
+            //Let hardware WDT reset us
+            DBG("Task %u WDT!", i);
+            vTaskDelay(pdMS_TO_TICKS(100));
+            vTaskSuspendAll();
+            taskDISABLE_INTERRUPTS();
+            while( 1 );
+         }
       }
    }
 } // namespace name
@@ -39,6 +38,14 @@ namespace wdt
 _BEGIN_STD_C
 void vApplicationIdleHook()
 {
-   wdt::process();
+   const uint32_t min_interval_ms = 100;
+   static TickType_t last_check = configINITIAL_TICK_COUNT;
+
+   TickType_t now = xTaskGetTickCount();
+   if ((now - last_check) > pdMS_TO_TICKS(min_interval_ms))
+   {
+      wdt::process(now);
+      last_check = now;
+   }
 }
 _END_STD_C

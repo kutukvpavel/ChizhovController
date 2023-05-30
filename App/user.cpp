@@ -7,6 +7,7 @@
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "wdt.h"
 #include "i2c_sync.h"
+#include "spi_sync.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -36,6 +37,7 @@ void StartMainTask(void *argument)
     
     pwdt = wdt::register_task(500);
     i2c::init();
+    spi::init();
     if (nvs::init() == HAL_OK) nvs::load();
     ModbusInit(&modbus);
 
@@ -71,8 +73,12 @@ void app_main()
 {
     static led_states led = led_states::HEARTBEAT;
 
-    
-
+    /***
+     * The following stuff is handled in separate tasks:
+     *  debug CLI
+     *  STM32 ADC reading
+     * 
+    */
     supervize_led(led);
 }
 
