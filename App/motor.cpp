@@ -71,6 +71,10 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
     {
         MX_TIM11_Init();
     }
+    else
+    {
+        DBG("Unknown pump timer!");
+    }
 }
 
 motor_t::~motor_t()

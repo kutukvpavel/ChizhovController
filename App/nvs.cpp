@@ -11,18 +11,69 @@
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
 #define MY_RETRIES 3
+#define PACKED_FOR_NVS __packed __aligned(sizeof(float))
 
 namespace nvs
 {
-    struct storage_t
+    struct PACKED_FOR_NVS storage_t
     {
-
+        pumps::params_t pump_params;
+        motor_params_t motor_params[MY_PUMPS_NUM];
+        motor_reg_t motor_regs[MY_PUMPS_NUM];
     };
     static storage_t storage = {
-
+        {
+            .invert_enable = 1
+        },
+        {
+            {
+                .dir = 0,
+                .microsteps = 32,
+                .teeth = 200,
+                .reserved1 = 0, //alignment
+                .volume_rate_to_rps = 1,
+                .max_rate_rps = 20,
+                .max_load_err = 17
+            },
+            {
+                .dir = 0,
+                .microsteps = 32,
+                .teeth = 200,
+                .reserved1 = 0, //alignment
+                .volume_rate_to_rps = 1,
+                .max_rate_rps = 20,
+                .max_load_err = 17
+            },
+            {
+                .dir = 0,
+                .microsteps = 32,
+                .teeth = 200,
+                .reserved1 = 0, //alignment
+                .volume_rate_to_rps = 1,
+                .max_rate_rps = 20,
+                .max_load_err = 17
+            }
+        },
+        {
+            {
+                .volume_rate = 0,
+                .rps = 0,
+                .err = 0
+            },
+            {
+                .volume_rate = 0,
+                .rps = 0,
+                .err = 0
+            },
+            {
+                .volume_rate = 0,
+                .rps = 0,
+                .err = 0
+            }
+        }
     };
 
-    uint8_t nvs_ver = 0;
+    static uint8_t nvs_ver = 0;
     HAL_StatusTypeDef eeprom_read(uint16_t addr, uint8_t* buf, uint16_t len)
     {
         assert_param((addr + len) < MY_NVS_TOTAL_SIZE);
@@ -123,5 +174,18 @@ namespace nvs
         HAL_Delay(5);
         save();
         return res;
+    }
+
+    motor_reg_t* get_motor_regs()
+    {
+        return &(storage.motor_regs[0]);
+    }
+    motor_params_t* get_motor_params()
+    {
+        return &(storage.motor_params[0]);
+    }
+    pumps::params_t* get_pump_params()
+    {
+        return &(storage.pump_params);
     }
 } // namespace nvs

@@ -8,6 +8,8 @@
 #include "wdt.h"
 #include "i2c_sync.h"
 #include "spi_sync.h"
+#include "pumps.h"
+#include "../Core/Inc/iwdg.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -17,7 +19,7 @@
     xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), NULL, \
     priority, task_stack_##name, &task_buffer_##name)
 
-void app_main();
+static inline void app_main();
 
 DEFINE_STATIC_TASK(MY_CLI, 1024);
 DEFINE_STATIC_TASK(MY_ADC, 256);
@@ -35,10 +37,14 @@ void StartMainTask(void *argument)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
     
+    HAL_IWDG_Refresh(&hiwdg);
+    vTaskDelay(pdMS_TO_TICKS(100)); //For the coprocessor to initialize
+
     pwdt = wdt::register_task(500);
     i2c::init();
     spi::init();
     if (nvs::init() == HAL_OK) nvs::load();
+    pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
     ModbusInit(&modbus);
 
     START_STATIC_TASK(MY_CLI, 1);
@@ -50,6 +56,7 @@ void StartMainTask(void *argument)
 
     ModbusStartCDC(&modbus);
 
+    HAL_IWDG_Refresh(&hiwdg);
     last_wake = xTaskGetTickCount();
     for (;;)
     {
@@ -77,8 +84,19 @@ void app_main()
      * The following stuff is handled in separate tasks:
      *  debug CLI
      *  STM32 ADC reading
+     *  SR IO sync
+     *  Coprocessor poll
+     *  MAX6675 poll
+     *  Display update
      * 
+     * The following remains for the main task to handle:
+     *  Status LED
+     *  Modbus requests
+     *  Pump speed update
     */
+
+
+
     supervize_led(led);
 }
 

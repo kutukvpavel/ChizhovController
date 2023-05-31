@@ -9,12 +9,12 @@ namespace pumps
     TIM_HandleTypeDef* m_timers[MY_PUMPS_NUM] = { &htim3, &htim4, &htim10, &htim11 }; 
     const params_t* params;
 
-    void init(const params_t* p, const motor_params_t** mp, motor_reg_t** mr)
+    void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
         params = p;
         for (size_t i = 0; i < array_size(motors); i++)
         {
-            motors[i] = new motor_t(m_timers[i], static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp[i], mr[i]);
+            motors[i] = new motor_t(m_timers[i], static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
         }
     }
     void set_enable(bool v)
@@ -26,9 +26,10 @@ namespace pumps
         assert_param(i < MY_PUMPS_NUM);
         return motors[i]->get_volume_rate();
     }
-    void set_indicated_speed(float v)
+    void set_indicated_speed(size_t i, float v)
     {
-
+        assert_param(i < MY_PUMPS_NUM);
+        motors[i]->set_volume_rate(v);
     }
     float get_speed_fraction(size_t i)
     {
