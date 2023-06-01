@@ -13,12 +13,33 @@
 
 namespace display
 {
+    enum leds : size_t
+    {
+        load_fraction = 0,
+        speed_fraction = 4,
+        overload = 14,
+        running
+    };
     struct __packed single_channel_map
     {
         uint8_t digits[DIGITS_PER_CHANNEL];
         uint8_t leds[2];
     };
     single_channel_map buffer[DISPLAY_CHANNELS] = { {}, {}, {} };
+
+    uint8_t get_fraction_bits(float v, size_t total_bits)
+    {
+        assert_param(total_bits <= 8);
+
+        uint8_t res = 0;
+        float resolution = 1.0f / total_bits;
+        for (size_t i = 0; i < total_bits; i++)
+        {
+            if (v < (i * resolution)) break;
+            res |= (1u << i);
+        }
+        return res;
+    }
 
     void init()
     {
@@ -27,7 +48,7 @@ namespace display
 
     HAL_StatusTypeDef repaint()
     {
-        return sr_io::write_display(&buffer, sizeof(buffer), MISSED_REPAINT_DELAY_MS);
+        return sr_io::write_display(buffer, sizeof(buffer), MISSED_REPAINT_DELAY_MS);
     }
 
     void compose()
@@ -37,10 +58,18 @@ namespace display
 
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
+            if (pumps::get_missing(i))
+            {
+                memset(&(buffer[i]), 0, sizeof(buffer[i])); //Blank out missing channels
+                continue;
+            }
             snprintf(temp, DIGITS_PER_CHANNEL + 1, "%4f", pumps::get_indicated_speed(i));
             memcpy(buffer[i].digits, temp, DIGITS_PER_CHANNEL);
+            uint16_t bits = 
+                get_fraction_bits(pumps::get_speed_fraction(i), 8) << leds::speed_fraction | 
+                get_fraction_bits(pumps::get_load_fraction(i), 4) << leds::load_fraction;
+            if (pumps::get_overload(i)) bits |= (1u << leds::overload);
         }
-        //TODO: LEDs
     }
 } // namespace display
 

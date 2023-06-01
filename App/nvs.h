@@ -16,4 +16,5 @@ namespace nvs
     motor_reg_t* get_motor_regs();
     motor_params_t* get_motor_params();
     pumps::params_t* get_pump_params();
+    uint16_t* get_modbus_addr();
 } // namespace nvs

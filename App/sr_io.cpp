@@ -4,10 +4,6 @@
 #include "compat_api.h"
 #include "task_handles.h"
 
-typedef uint32_t sr_buf_t;
-
-#define BUF_WORD_BITS (__CHAR_BIT__ * sizeof(sr_buf_t))
-#define BUF_LEN(n) (((n) - 1) / BUF_WORD_BITS + 1)
 #define BIT_TO_WORD_IDX(b) ((b) / BUF_WORD_BITS)
 #define BIT_REMAINDER_IDX(b) ((b) % BUF_WORD_BITS) 
 #define BV(b) (1u << (b))
@@ -33,8 +29,8 @@ namespace sr_io
     static StaticSemaphore_t srMutexBuffer;
     static bool initialized = false;
 
-    static sr_buf_t input_buffer[BUF_LEN(in::IN_LEN)];
-    static sr_buf_t output_buffer[BUF_LEN(out::OUT_LEN)];
+    static sr_buf_t input_buffer[input_buffer_len];
+    static sr_buf_t output_buffer[output_buffer_len];
 
     void init()
     {
@@ -86,7 +82,11 @@ namespace sr_io
     bool get_input(in i)
     {
         return input_buffer[BIT_TO_WORD_IDX(i)] & BV(BIT_REMAINDER_IDX(i));
-    } 
+    }
+    const sr_buf_t* get_inputs()
+    {
+        return input_buffer;
+    }
     void set_output(out i, bool v)
     {
         if (v)
@@ -97,6 +97,10 @@ namespace sr_io
         {
             output_buffer[BIT_TO_WORD_IDX(i)] &= ~BV(BIT_REMAINDER_IDX(i));
         }
+    }
+    const sr_buf_t* get_outputs()
+    {
+        return output_buffer;
     }
 
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait)

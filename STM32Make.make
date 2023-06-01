@@ -118,6 +118,7 @@ App/coprocessor.cpp \
 App/dbg_shell.cpp \
 App/display.cpp \
 App/i2c_sync.cpp \
+App/modbus_regs.cpp \
 App/motor.cpp \
 App/nvs.cpp \
 App/pumps.cpp \

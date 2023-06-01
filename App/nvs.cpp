@@ -20,12 +20,13 @@ namespace nvs
         pumps::params_t pump_params;
         motor_params_t motor_params[MY_PUMPS_NUM];
         motor_reg_t motor_regs[MY_PUMPS_NUM];
+        uint16_t modbus_id;
     };
     static storage_t storage = {
-        {
+        .pump_params = {
             .invert_enable = 1
         },
-        {
+        .motor_params = {
             {
                 .dir = 0,
                 .microsteps = 32,
@@ -54,7 +55,7 @@ namespace nvs
                 .max_load_err = 17
             }
         },
-        {
+        .motor_regs = {
             {
                 .volume_rate = 0,
                 .rps = 0,
@@ -70,7 +71,8 @@ namespace nvs
                 .rps = 0,
                 .err = 0
             }
-        }
+        },
+        .modbus_id = 1
     };
 
     static uint8_t nvs_ver = 0;
@@ -103,7 +105,7 @@ namespace nvs
             if (status != HAL_OK) break;
             buf += MY_NVS_PAGE_SIZE;
             current_page_addr += MY_NVS_PAGE_SIZE;
-            HAL_Delay(5);
+            vTaskDelay(pdMS_TO_TICKS(5));
         }
         if (status != HAL_OK) return status;
         if (remainder > 0)
@@ -187,5 +189,9 @@ namespace nvs
     pumps::params_t* get_pump_params()
     {
         return &(storage.pump_params);
+    }
+    uint16_t* get_modbus_addr()
+    {
+        return &(storage.modbus_id);
     }
 } // namespace nvs

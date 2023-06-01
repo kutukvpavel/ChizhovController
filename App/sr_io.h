@@ -2,6 +2,11 @@
 
 #include "user.h"
 
+typedef uint16_t sr_buf_t;
+
+#define BUF_WORD_BITS (__CHAR_BIT__ * sizeof(sr_buf_t))
+#define BUF_LEN(n) (((n) - 1) / BUF_WORD_BITS + 1)
+
 namespace sr_io
 {
     const uint32_t regular_sync_delay_ms = 100;
@@ -57,9 +62,14 @@ namespace sr_io
 
         OUT_LEN
     };
+
+    const size_t input_buffer_len = BUF_LEN(in::IN_LEN);
+    const size_t output_buffer_len = BUF_LEN(out::OUT_LEN);
     
     bool get_input(in i);
     void set_output(out i, bool v);
+    const sr_buf_t* get_inputs();
+    const sr_buf_t* get_outputs();
     
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait);
 } // namespace sr_io

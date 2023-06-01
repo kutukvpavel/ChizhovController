@@ -19,6 +19,8 @@ struct PACKED_FOR_MODBUS motor_reg_t
     float volume_rate;
     float rps;
     float err;
+    uint16_t missing;
+    uint16_t overload;
 };
 
 class motor_t
@@ -29,15 +31,22 @@ private:
     float last_volume_rate = 0;
     float current_load_err;
     size_t current_range = 0;
-    const motor_params_t* params;
+    motor_params_t params;
     motor_reg_t* reg;
+    SemaphoreHandle_t params_mutex = NULL;
 public:
     motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
     ~motor_t();
+
+    void reload_params();
 
     void set_volume_rate(float v);
     float get_volume_rate();
     float get_speed_fraction();
     void set_load_err(float v);
     float get_load_fraction();
+    void set_overload(bool v);
+    bool get_overload();
+    void set_missing(bool v);
+    bool get_missing();
 };

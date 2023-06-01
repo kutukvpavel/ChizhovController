@@ -1,6 +1,5 @@
 #include "user.h"
 
-#include "sr_io.h"
 #include "compat_api.h"
 #include "nvs.h"
 #include "task_handles.h"
@@ -10,6 +9,7 @@
 #include "spi_sync.h"
 #include "pumps.h"
 #include "../Core/Inc/iwdg.h"
+#include "modbus_regs.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -27,6 +27,7 @@ DEFINE_STATIC_TASK(MY_IO, 256);
 DEFINE_STATIC_TASK(MY_COPROC, 512);
 DEFINE_STATIC_TASK(MY_THERMO, 256);
 DEFINE_STATIC_TASK(MY_DISP, 1024);
+DEFINE_STATIC_TASK(MY_MODBUS, 1024);
 
 modbusHandler_t modbus;
 
@@ -45,7 +46,6 @@ void StartMainTask(void *argument)
     spi::init();
     if (nvs::init() == HAL_OK) nvs::load();
     pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
-    ModbusInit(&modbus);
 
     START_STATIC_TASK(MY_CLI, 1);
     START_STATIC_TASK(MY_ADC, 1);
@@ -53,8 +53,7 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_COPROC, 1);
     START_STATIC_TASK(MY_THERMO, 1);
     START_STATIC_TASK(MY_DISP, 1);
-
-    ModbusStartCDC(&modbus);
+    START_STATIC_TASK(MY_MODBUS, 1);
 
     HAL_IWDG_Refresh(&hiwdg);
     last_wake = xTaskGetTickCount();
@@ -88,14 +87,16 @@ void app_main()
      *  Coprocessor poll
      *  MAX6675 poll
      *  Display update
+     *  Modbus requests
+     *  Modbus buffer sync
      * 
      * The following remains for the main task to handle:
      *  Status LED
-     *  Modbus requests
      *  Pump speed update
+     *  State machine
     */
 
-
+    
 
     supervize_led(led);
 }

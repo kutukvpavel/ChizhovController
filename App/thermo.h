@@ -6,5 +6,5 @@
 
 namespace thermo
 {
-    float get_temperature(size_t i);
+    const float* get_temperatures();
 } // namespace thermo

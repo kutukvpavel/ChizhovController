@@ -8,10 +8,10 @@
 
 namespace thermo
 {
-    size_t spi_indexes[MY_TEMP_CHANNEL_NUM] = { 2, 3 };
-    float temperatures[MY_TEMP_CHANNEL_NUM] = { NAN, NAN };
+    static size_t spi_indexes[MY_TEMP_CHANNEL_NUM] = { 2, 3 };
+    static float temperatures[MY_TEMP_CHANNEL_NUM] = { NAN, NAN };
 
-    float get_celsius(const uint8_t* buffer)
+    static float get_celsius(const uint8_t* buffer)
     {
         const float max_temp = 1024.0f;
         const float resolution = 4096.0f;
@@ -20,12 +20,12 @@ namespace thermo
         return v * (max_temp / resolution);
     }
 
-    void init()
+    static void init()
     {
 
     }
 
-    void sync()
+    static void sync()
     {
         uint8_t buffer[2];
         for (size_t i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
@@ -38,10 +38,9 @@ namespace thermo
         }
     }
 
-    float get_temperature(size_t i)
+    const float* get_temperatures()
     {
-        assert_param(i < array_size(temperatures));
-        return temperatures[i];
+        return temperatures;
     }
 } // namespace thermo
 

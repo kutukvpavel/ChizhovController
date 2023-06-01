@@ -15,6 +15,7 @@ namespace wdt
 
       task_t* instance = &(tasks[registered_tasks++]);
       instance->deadline = pdMS_TO_TICKS(interval_ms);
+      instance->last_time = xTaskGetTickCount();
       return instance;
    }
 

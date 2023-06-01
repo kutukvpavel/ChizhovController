@@ -3,6 +3,7 @@
 #include "task_handles.h"
 #include "wdt.h"
 #include "i2c_sync.h"
+#include "pumps.h"
 
 #define MAX_ENCODERS 3
 #define COPROCESSOR_ADDR 0x08
@@ -83,6 +84,18 @@ namespace coprocessor
 
         RELEASE_MUTEX();
         return ret;
+    }
+    bool get_drv_error(size_t i)
+    {
+        assert_param(i < MY_PUMPS_NUM);
+        auto copy = buffer.drv_error_bitfield;
+        return (copy & (1u << i)) > 0;
+    }
+    bool get_drv_missing(size_t i)
+    {
+        assert_param(i < MY_PUMPS_NUM);
+        auto copy = buffer.drv_missing_bitfield;
+        return (copy & (1u << i)) > 0;
     }
 } // namespace coprocessor
 

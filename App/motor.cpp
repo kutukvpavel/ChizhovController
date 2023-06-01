@@ -1,5 +1,7 @@
 #include "motor.h"
 
+#include "nvs.h"
+
 #include <math.h>
 
 //private
@@ -14,7 +16,7 @@ struct speed_range_t
     float hz_to_arr;
     uint16_t psc;
 };
-speed_range_t ranges[SPEED_RANGE_NUM] = {
+static speed_range_t ranges[SPEED_RANGE_NUM] = {
     {
 
     },
@@ -26,7 +28,7 @@ speed_range_t ranges[SPEED_RANGE_NUM] = {
     }
 };
 
-size_t calculate_range(float pulse_hz, size_t current)
+static size_t calculate_range(float pulse_hz, size_t current)
 {
     auto& cr = ranges[current];
     if ((pulse_hz < (cr.max_hz + cr.hyst_hz)) && (pulse_hz > (cr.min_hz - cr.hyst_hz))) return current;
@@ -53,8 +55,14 @@ size_t calculate_range(float pulse_hz, size_t current)
 //motor_t
 
 motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p, motor_reg_t* r) 
-    : timer(tim), pin_dir(dir), params(p), reg(r)
+    : timer(tim), pin_dir(dir), params(*p), reg(r)
 {
+    static_assert(sizeof(motor_params_t) % 2 == 0);
+    static_assert(sizeof(motor_reg_t) % 2 == 0);
+
+    params_mutex = xSemaphoreCreateMutex();
+    assert_param(params_mutex);
+
     if (tim->Instance == TIM3)
     {
         MX_TIM3_Init();
@@ -79,6 +87,14 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
 
 motor_t::~motor_t()
 {
+    vSemaphoreDelete(params_mutex);
+}
+
+void motor_t::reload_params()
+{
+    while (xSemaphoreTake(params_mutex, portMAX_DELAY));
+    params = *nvs::get_motor_params();
+    xSemaphoreGive(params_mutex);
 }
 
 void motor_t::set_volume_rate(float v)
@@ -93,17 +109,21 @@ void motor_t::set_volume_rate(float v)
         return;
     }
 
-    float rps = v * params->volume_rate_to_rps;
-    if (rps > params->max_rate_rps) rps = params->max_rate_rps;
+    while (xSemaphoreTake(params_mutex, portMAX_DELAY));
+    float rps = v * params.volume_rate_to_rps;
+    if (rps > params.max_rate_rps) rps = params.max_rate_rps;
     reg->rps = rps;
-    reg->volume_rate = rps / params->volume_rate_to_rps;
-    float pulse_hz = rps * params->microsteps * params->teeth;
+    reg->volume_rate = rps / params.volume_rate_to_rps;
+    float pulse_hz = rps * params.microsteps * params.teeth;
+    xSemaphoreGive(params_mutex);
+
     current_range = calculate_range(pulse_hz, current_range);
     uint16_t psc = ranges[current_range].psc;
     float farr = roundf(ranges[current_range].hz_to_arr / pulse_hz);
     if (farr > UINT16_MAX) farr = UINT16_MAX;
     else if (farr < MIN_TIMER_ARR) farr = MIN_TIMER_ARR;
     uint16_t arr = static_cast<uint16_t>(farr);
+    
     taskENTER_CRITICAL();
     timer->Instance->PSC = psc;
     timer->Instance->ARR = arr;
@@ -123,7 +143,7 @@ float motor_t::get_volume_rate()
 
 float motor_t::get_speed_fraction()
 {
-    return reg->rps / params->max_rate_rps;
+    return reg->rps / params.max_rate_rps;
 }
 
 void motor_t::set_load_err(float v)
@@ -133,5 +153,5 @@ void motor_t::set_load_err(float v)
 
 float motor_t::get_load_fraction()
 {
-    return reg->err / params->max_load_err;
+    return reg->err / params.max_load_err;
 }
