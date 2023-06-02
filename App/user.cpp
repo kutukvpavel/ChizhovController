@@ -83,7 +83,8 @@ enum class states : uint16_t
     init,
     manual,
     automatic,
-    emergency
+    emergency,
+    lamp_test
 };
 
 void supervize_led(led_states s);
@@ -123,6 +124,12 @@ void app_main()
             front_panel::clear_lights();
             while (front_panel::get_button(front_panel::b_start)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
             state = states::manual;
+        }
+        if (front_panel::get_button(front_panel::b_light_test))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_light_test)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            state = states::lamp_test;
         }
         break;
 
@@ -166,6 +173,27 @@ void app_main()
             state = states::init;
         }
         break;
+
+    case states::lamp_test:
+    {
+        static display::test_modes mode = display::test_modes::all_lit;
+
+        front_panel::test();
+        display::set_lamp_test_mode(mode);
+        if (front_panel::get_button(front_panel::b_light_test))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_light_test)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
+            if (mode == display::test_modes::none)
+            {
+                display::set_lamp_test_mode(display::test_modes::none);
+                mode = display::test_modes::all_lit;
+                state = states::init;
+            }
+        }
+        break;
+    }
     
     default:
         HAL_NVIC_SystemReset();

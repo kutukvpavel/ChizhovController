@@ -32,6 +32,7 @@ namespace front_panel
     };
 
     void clear_lights();
+    void test();
     void set_light(lights l, l_state on, size_t channel = 0);
     bool get_button(buttons b, size_t channel = 0);
 } // namespace front_panel

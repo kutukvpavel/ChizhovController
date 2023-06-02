@@ -37,6 +37,16 @@ namespace front_panel
         }
         xSemaphoreGive(blink_mutex);
     }
+    void test()
+    {
+        while (xSemaphoreTake(blink_mutex, portMAX_DELAY) != pdTRUE);
+        for (size_t i = 0; i < lights::L_LEN; i++)
+        {
+            blink_enable[i] = false;
+            sr_io::set_output(lights_mapping[i], true);
+        }
+        xSemaphoreGive(blink_mutex);
+    }
     void set_light(lights l, l_state on, size_t channel)
     {
         while (xSemaphoreTake(blink_mutex, portMAX_DELAY) != pdTRUE);

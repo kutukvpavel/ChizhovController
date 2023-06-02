@@ -6,7 +6,9 @@ namespace display
     {
         none,
         all_lit,
-        digits
+        digits,
+
+        TST_LEN
     };
 
     void set_lamp_test_mode(test_modes m);
