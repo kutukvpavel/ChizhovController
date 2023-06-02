@@ -34,6 +34,8 @@ namespace sr_io
 
     void init()
     {
+        DBG("SR IO Init...");
+
         srMutexHandle = xSemaphoreCreateMutexStatic(&srMutexBuffer);
         assert_param(srMutexHandle);
 

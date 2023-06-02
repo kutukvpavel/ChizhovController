@@ -1,16 +1,26 @@
-#include "user.h"
+#include "dbg_shell.h"
 
+#include "user.h"
 #include "ushell/inc/sys_command_line.h"
 #include "../Core/Inc/usart.h"
 #include "task_handles.h"
 
 static void init();
 
+namespace cli
+{
+    static bool ready_buf = false;
+
+    const bool* ready = &ready_buf;
+} // namespace cli
+
+
 _BEGIN_STD_C
 STATIC_TASK_BODY(MY_CLI)
 {
     //Init debug commands
     init();
+    cli::ready_buf = true;
 
     //run loop
     for (;;)

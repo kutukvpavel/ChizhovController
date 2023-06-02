@@ -125,7 +125,8 @@ __weak void StartMainTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(10);
+    HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
   }
   /* USER CODE END StartMainTask */
 }

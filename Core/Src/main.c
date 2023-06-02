@@ -109,13 +109,20 @@ int main(void)
   MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
+  HAL_IWDG_Refresh(&hiwdg);
+  HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
+  HAL_Delay(100);
+  HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
+
   /* USER CODE END 2 */
 
   /* Init scheduler */
+  HAL_IWDG_Refresh(&hiwdg);
   osKernelInitialize();  /* Call init function for freertos objects (in freertos.c) */
   MX_FREERTOS_Init();
 
   /* Start scheduler */
+  HAL_IWDG_Refresh(&hiwdg);
   osKernelStart();
 
   /* We should never get here as control is now taken by the scheduler */
@@ -124,7 +131,8 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+    HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
+    HAL_Delay(10);
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */

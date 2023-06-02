@@ -8,13 +8,24 @@
 namespace front_panel
 {
     static const sr_io::out lights_mapping[lights::L_LEN] = {
-
+        sr_io::out::OC1,
+        sr_io::out::OC2,
+        sr_io::out::OC3,
+        sr_io::out::OC4,
+        sr_io::out::OC5
     };
     static const sr_io::in buttons_mapping[buttons::B_LEN] = {
-
+        sr_io::in::IN4,
+        sr_io::in::IN5,
+        sr_io::in::IN6,
+        sr_io::in::IN7,
+        sr_io::in::IN8,
     };
-    static const sr_io::in pause_btn_mapping[MY_PUMPS_NUM] = {
-
+    static const sr_io::in pause_btn_mapping[MY_PUMPS_MAX] = {
+        sr_io::in::IN0,
+        sr_io::in::IN1,
+        sr_io::in::IN2,
+        sr_io::in::IN3
     };
 
     static bool blink_enable[lights::L_LEN] = { 0 };
@@ -23,6 +34,7 @@ namespace front_panel
 
     void init()
     {
+        DBG("Front panel init...");
         blink_mutex = xSemaphoreCreateMutex();
         assert_param(blink_mutex);
     }

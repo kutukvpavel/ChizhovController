@@ -13,6 +13,8 @@
 #include "display.h"
 #include "front_panel.h"
 #include "coprocessor.h"
+#include "../USB_DEVICE/App/usb_device.h"
+#include "dbg_shell.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -21,8 +23,14 @@
 #define START_STATIC_TASK(name, priority) \
     xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), NULL, \
     priority, task_stack_##name, &task_buffer_##name)
+#define WAIT_ON_BTN(b) \
+    while (front_panel::get_button(b)) \
+    {   \
+        vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms)); \
+        pwdt->last_time = xTaskGetTickCount(); \
+    }
 
-static inline void app_main();
+static inline void app_main(wdt::task_t* pwdt);
 
 DEFINE_STATIC_TASK(MY_CLI, 1024);
 DEFINE_STATIC_TASK(MY_ADC, 256);
@@ -43,15 +51,31 @@ void StartMainTask(void *argument)
     static wdt::task_t* pwdt;
     
     HAL_IWDG_Refresh(&hiwdg);
-    vTaskDelay(pdMS_TO_TICKS(100)); //For the coprocessor to initialize
-
-    pwdt = wdt::register_task(500);
-    i2c::init();
-    spi::init();
-    if (nvs::init() == HAL_OK) nvs::load();
-    pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
 
     START_STATIC_TASK(MY_CLI, 1);
+    while (!(*cli::ready)) 
+    {
+        vTaskDelay(pdMS_TO_TICKS(10));
+        HAL_IWDG_Refresh(&hiwdg);
+    }
+
+    DBG("I2C Init...");
+    i2c::init();
+    HAL_IWDG_Refresh(&hiwdg);
+    DBG("SPI Init...");
+    spi::init();
+    HAL_IWDG_Refresh(&hiwdg);
+    DBG("NVS Init...");
+    if (nvs::init() == HAL_OK) nvs::load();
+    HAL_IWDG_Refresh(&hiwdg);
+    DBG("Pump Init...");
+    pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
+    HAL_IWDG_Refresh(&hiwdg);
+    DBG("USB Init...");
+    MX_USB_DEVICE_Init();
+    HAL_IWDG_Refresh(&hiwdg);
+
+    DBG("Task init...");
     START_STATIC_TASK(MY_ADC, 1);
     START_STATIC_TASK(MY_IO, 1);
     START_STATIC_TASK(MY_COPROC, 1);
@@ -61,10 +85,11 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_FP, 1);
 
     HAL_IWDG_Refresh(&hiwdg);
+    pwdt = wdt::register_task(500);
     last_wake = xTaskGetTickCount();
     for (;;)
     {
-        app_main();
+        app_main(pwdt);
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
         pwdt->last_time = last_wake;
     }
@@ -91,7 +116,7 @@ void supervize_led(led_states s);
 void supervize_fp(states s); //State-independent FP elements
 void supervize_manual_mode();
 
-void app_main()
+void app_main(wdt::task_t* pwdt)
 {
     static led_states led = led_states::INIT;
     static states state = states::init;
@@ -122,14 +147,17 @@ void app_main()
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_start)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_start);
+            pumps::switch_hw_interlock();
             state = states::manual;
+            DBG("State: manual");
         }
         if (front_panel::get_button(front_panel::b_light_test))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_light_test)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_light_test);
             state = states::lamp_test;
+            DBG("State: lamp test");
         }
         break;
 
@@ -140,14 +168,16 @@ void app_main()
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_start)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_start);
             state = states::automatic;
+            DBG("State: auto");
         }
         if (front_panel::get_button(front_panel::b_stop))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_stop)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_stop);
             state = states::init;
+            DBG("State: init");
         }
         break;
 
@@ -158,8 +188,9 @@ void app_main()
         if (front_panel::get_button(front_panel::b_stop))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_stop)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_stop);
             state = states::manual;
+            DBG("State: manual");
         }
         break;
 
@@ -171,6 +202,7 @@ void app_main()
         {
             front_panel::clear_lights();
             state = states::init;
+            DBG("State: init");
         }
         break;
 
@@ -183,27 +215,32 @@ void app_main()
         if (front_panel::get_button(front_panel::b_light_test))
         {
             front_panel::clear_lights();
-            while (front_panel::get_button(front_panel::b_light_test)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            WAIT_ON_BTN(front_panel::b_light_test);
             mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
             if (mode == display::test_modes::none)
             {
                 display::set_lamp_test_mode(display::test_modes::none);
                 mode = display::test_modes::all_lit;
                 state = states::init;
+                DBG("State: init");
             }
         }
         break;
     }
     
     default:
+        DBG("State machine corrupt");
+        vTaskDelay(pdMS_TO_TICKS(100));
         HAL_NVIC_SystemReset();
         break;
     }
+    DBG(".");
     if (!front_panel::get_button(front_panel::b_emergency)) state = states::emergency;
     pumps::set_enable(state == states::automatic || state == states::manual);
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));
 
+    taskYIELD();
     supervize_fp(state);
     supervize_led(led);
 }

@@ -1,6 +1,7 @@
 #include "wdt.h"
 
 #include "../Core/Inc/iwdg.h"
+#include "../Core/Inc/gpio.h"
 
 #define MY_MAX_WDG_TASKS 16u
 
@@ -16,6 +17,8 @@ namespace wdt
       task_t* instance = &(tasks[registered_tasks++]);
       instance->deadline = pdMS_TO_TICKS(interval_ms);
       instance->last_time = xTaskGetTickCount();
+
+      DBG("Registered task WDT #%u", registered_tasks);
       return instance;
    }
 
@@ -30,6 +33,7 @@ namespace wdt
             vTaskDelay(pdMS_TO_TICKS(100));
             vTaskSuspendAll();
             taskDISABLE_INTERRUPTS();
+            LL_GPIO_SetOutputPin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
             while( 1 );
          }
       }

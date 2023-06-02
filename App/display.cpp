@@ -81,7 +81,7 @@ namespace display
 
     void init()
     {
-
+        DBG("Display init...");
     }
 
     HAL_StatusTypeDef repaint()

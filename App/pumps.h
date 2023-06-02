@@ -3,7 +3,8 @@
 #include "user.h"
 #include "motor.h"
 
-#define MY_PUMPS_NUM 4
+#define MY_PUMPS_NUM 3 //Currently implemented for the whole system
+#define MY_PUMPS_MAX 4 //Max for main board
 
 namespace pumps
 {
@@ -14,14 +15,14 @@ namespace pumps
         float volume_rate_resolution;
     };
 
-    //extern motor_t motors[MY_PUMPS_NUM];
-
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr);
 
     void reload_motor_params();
     void reload_params();
 
     void set_enable(bool v);
+    void switch_hw_interlock();
+
     float get_indicated_speed(size_t i);
     void set_indicated_speed(size_t i, float v);
     void increment_speed(size_t i, int32_t diff);

@@ -16,18 +16,30 @@ struct speed_range_t
     float min_hz;
     float max_hz;
     float hyst_hz;
-    float hz_to_arr;
+    float arr_clock;
     uint16_t psc;
 };
 static speed_range_t ranges[SPEED_RANGE_NUM] = {
     {
-
+        .min_hz = 0,
+        .max_hz = 70,
+        .hyst_hz = 10,
+        .arr_clock = 82031.25f,
+        .psc = 1024 - 1
     },
     {
-
+        .min_hz = 60,
+        .max_hz = 2500,
+        .hyst_hz = 10,
+        .arr_clock = 2.625E6,
+        .psc = 32 - 1
     },
     {
-
+        .min_hz = 1500,
+        .max_hz = 84000,
+        .hyst_hz = 100,
+        .arr_clock = 8.4E7,
+        .psc = 0
     }
 };
 
@@ -122,7 +134,7 @@ void motor_t::set_volume_rate(float v)
 
     current_range = calculate_range(pulse_hz, current_range);
     uint16_t psc = ranges[current_range].psc;
-    float farr = roundf(ranges[current_range].hz_to_arr / pulse_hz);
+    float farr = roundf(ranges[current_range].arr_clock / pulse_hz);
     if (farr > UINT16_MAX) farr = UINT16_MAX;
     else if (farr < MIN_TIMER_ARR) farr = MIN_TIMER_ARR;
     uint16_t arr = static_cast<uint16_t>(farr);

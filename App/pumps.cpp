@@ -7,7 +7,7 @@
 namespace pumps
 {
     static motor_t* motors[MY_PUMPS_NUM];
-    static TIM_HandleTypeDef* m_timers[MY_PUMPS_NUM] = { &htim3, &htim4, &htim10, &htim11 }; 
+    static TIM_HandleTypeDef* m_timers[MY_PUMPS_MAX] = { &htim3, &htim4, &htim10, &htim11 }; 
     static const params_t* params;
     static bool enable = false;
     static float full_assigned_speed[MY_PUMPS_NUM] = { 0 };
@@ -15,6 +15,7 @@ namespace pumps
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
         params = p;
+        set_enable(false);
         for (size_t i = 0; i < array_size(motors); i++)
         {
             motors[i] = new motor_t(m_timers[i], static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
@@ -33,6 +34,14 @@ namespace pumps
         set_enable(enable);
     }
 
+    void switch_hw_interlock()
+    {
+        const sr_io::out motor_enable_interlock = sr_io::out::OC0;
+
+        sr_io::set_output(motor_enable_interlock, true);
+        vTaskDelay(pdMS_TO_TICKS(100));
+        sr_io::set_output(motor_enable_interlock, false);
+    }
     void set_enable(bool v)
     {
         sr_io::set_output(sr_io::out::MOTORS_EN, params->invert_enable ? !v : v);

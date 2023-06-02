@@ -22,7 +22,7 @@ namespace thermo
 
     static void init()
     {
-
+        DBG("MAX6675 Init...");
     }
 
     static void sync()

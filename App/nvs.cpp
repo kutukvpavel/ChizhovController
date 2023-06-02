@@ -18,8 +18,8 @@ namespace nvs
     struct PACKED_FOR_NVS storage_t
     {
         pumps::params_t pump_params;
-        motor_params_t motor_params[MY_PUMPS_NUM];
-        motor_reg_t motor_regs[MY_PUMPS_NUM];
+        motor_params_t motor_params[MY_PUMPS_MAX];
+        motor_reg_t motor_regs[MY_PUMPS_MAX];
         uint16_t modbus_id;
     };
     static storage_t storage = {

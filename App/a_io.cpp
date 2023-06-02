@@ -28,6 +28,7 @@ namespace a_io
 
     void init()
     {
+        DBG("A_IO init...");
         for (size_t i = 0; i < in::LEN; i++)
         {
             ch[i].a = new average(10);

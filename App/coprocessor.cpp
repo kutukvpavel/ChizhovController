@@ -28,6 +28,7 @@ namespace coprocessor
 
     HAL_StatusTypeDef init()
     {
+        DBG("Coprocessor init...");
         sync_mutex = xSemaphoreCreateMutex();
         return sync_mutex ? HAL_OK : HAL_ERROR;
     }

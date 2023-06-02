@@ -41,9 +41,9 @@ namespace mb_regs
         sr_buf_t sr_outputs[sr_io::output_buffer_len]; //Len = 2
         sr_buf_t commanded_outputs[sr_io::output_buffer_len]; //Len = 2
         pumps::params_t pump_params;
-        motor_params_t motor_params[MY_PUMPS_NUM];
-        motor_reg_t motor_regs[MY_PUMPS_NUM];
-        float commanded_motor_rate[MY_PUMPS_NUM];
+        motor_params_t motor_params[MY_PUMPS_MAX];
+        motor_reg_t motor_regs[MY_PUMPS_MAX];
+        float commanded_motor_rate[MY_PUMPS_MAX];
     };
     const size_t length = sizeof(reg_t) / sizeof(uint16_t);
 
@@ -140,6 +140,7 @@ namespace mb_regs
     HAL_StatusTypeDef init(uint16_t* addr)
     {
         static_assert(sizeof(reg_t) % 2 == 0); //32-bit alignment
+        DBG("Modbus init...");
         assert_param(!set_mutex);
 
         set_mutex = xSemaphoreCreateMutex();
