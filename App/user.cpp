@@ -10,6 +10,9 @@
 #include "pumps.h"
 #include "../Core/Inc/iwdg.h"
 #include "modbus_regs.h"
+#include "display.h"
+#include "front_panel.h"
+#include "coprocessor.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -28,6 +31,7 @@ DEFINE_STATIC_TASK(MY_COPROC, 512);
 DEFINE_STATIC_TASK(MY_THERMO, 256);
 DEFINE_STATIC_TASK(MY_DISP, 1024);
 DEFINE_STATIC_TASK(MY_MODBUS, 1024);
+DEFINE_STATIC_TASK(MY_FP, 256);
 
 modbusHandler_t modbus;
 
@@ -54,6 +58,7 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_THERMO, 1);
     START_STATIC_TASK(MY_DISP, 1);
     START_STATIC_TASK(MY_MODBUS, 1);
+    START_STATIC_TASK(MY_FP, 1);
 
     HAL_IWDG_Refresh(&hiwdg);
     last_wake = xTaskGetTickCount();
@@ -73,11 +78,22 @@ enum class led_states
     COMMUNICATION,
     INIT
 };
+enum class states : uint16_t
+{
+    init,
+    manual,
+    automatic,
+    emergency
+};
+
 void supervize_led(led_states s);
+void supervize_fp(states s); //State-independent FP elements
+void supervize_manual_mode();
 
 void app_main()
 {
-    static led_states led = led_states::HEARTBEAT;
+    static led_states led = led_states::INIT;
+    static states state = states::init;
 
     /***
      * The following stuff is handled in separate tasks:
@@ -92,13 +108,115 @@ void app_main()
      * 
      * The following remains for the main task to handle:
      *  Status LED
-     *  Pump speed update
+     *  Manual pump speed update
      *  State machine
     */
 
-    
+    switch (state)
+    {
+    case states::init:
+        led = led_states::INIT;
+        //Here we wait until the user pushes start button
+        front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
+        if (front_panel::get_button(front_panel::b_start))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_start)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            state = states::manual;
+        }
+        break;
 
+    case states::manual:
+        led = led_states::HEARTBEAT;
+        front_panel::set_light(front_panel::l_start, front_panel::l_state::on);
+        supervize_manual_mode();
+        if (front_panel::get_button(front_panel::b_start))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_start)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            state = states::automatic;
+        }
+        if (front_panel::get_button(front_panel::b_stop))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_stop)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            state = states::init;
+        }
+        break;
+
+    case states::automatic:
+        led = led_states::COMMUNICATION;
+        front_panel::set_light(front_panel::l_automatic_mode, front_panel::l_state::on);
+        front_panel::set_light(front_panel::l_stop, front_panel::l_state::on);
+        if (front_panel::get_button(front_panel::b_stop))
+        {
+            front_panel::clear_lights();
+            while (front_panel::get_button(front_panel::b_stop)) vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+            state = states::manual;
+        }
+        break;
+
+    case states::emergency:
+        led = led_states::ERROR;
+        front_panel::set_light(front_panel::l_emergency, front_panel::l_state::on);
+        front_panel::set_light(front_panel::l_stop, front_panel::l_state::blink);
+        if (front_panel::get_button(front_panel::b_stop))
+        {
+            front_panel::clear_lights();
+            state = states::init;
+        }
+        break;
+    
+    default:
+        HAL_NVIC_SystemReset();
+        break;
+    }
+    if (!front_panel::get_button(front_panel::b_emergency)) state = states::emergency;
+    pumps::set_enable(state == states::automatic || state == states::manual);
+    mb_regs::set_remote(state == states::automatic);
+    mb_regs::set_status(static_cast<uint16_t>(state));
+
+    supervize_fp(state);
     supervize_led(led);
+}
+
+void supervize_fp(states s)
+{
+    front_panel::set_light(front_panel::l_manual_override, 
+        (coprocessor::get_manual_override() < 0.999f) ? front_panel::l_state::blink : front_panel::l_state::off);
+    for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+    {
+        pumps::set_paused(i, front_panel::get_button(front_panel::b_pause, i));
+    }
+}
+
+void supervize_manual_mode()
+{
+    struct edit_t
+    {
+        bool enable = false;
+        TickType_t time = configINITIAL_TICK_COUNT;
+        uint32_t last_pos = 0;
+    };
+    const TickType_t max_edit_delay = pdMS_TO_TICKS(5000);
+    edit_t enable_edit[MY_PUMPS_NUM] = { };
+
+    TickType_t now = xTaskGetTickCount();
+    for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+    {
+        auto& e = enable_edit[i];
+        if (coprocessor::get_encoder_btn_pressed(i)) 
+        {
+            e.enable = !e.enable;
+            e.time = now;
+        }
+        if (e.enable && ((now - e.time) > max_edit_delay)) e.enable = false;
+        if (!e.enable) continue;
+        uint32_t current_pos = coprocessor::get_encoder_value(i);
+        pumps::increment_speed(i, static_cast<int32_t>(
+            static_cast<int64_t>(current_pos) - static_cast<int64_t>(e.last_pos)));
+        e.last_pos = current_pos;
+    }
 }
 
 void supervize_led(led_states s)

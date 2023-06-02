@@ -9,7 +9,7 @@ typedef uint16_t sr_buf_t;
 
 namespace sr_io
 {
-    const uint32_t regular_sync_delay_ms = 100;
+    const uint32_t regular_sync_delay_ms = 30;
     const uint32_t missed_sync_delay_ms = 3;
 
     enum in : size_t

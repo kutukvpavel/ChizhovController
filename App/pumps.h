@@ -11,6 +11,7 @@ namespace pumps
     {
         uint16_t invert_enable;
         uint16_t reserved; //Alignment
+        float volume_rate_resolution;
     };
 
     //extern motor_t motors[MY_PUMPS_NUM];
@@ -23,10 +24,12 @@ namespace pumps
     void set_enable(bool v);
     float get_indicated_speed(size_t i);
     void set_indicated_speed(size_t i, float v);
+    void increment_speed(size_t i, int32_t diff);
     float get_speed_fraction(size_t i);
     float get_load_fraction(size_t i);
     bool get_missing(size_t i);
     void set_missing(size_t i, bool v);
     bool get_overload(size_t i);
-    void set_overload(size_t i, bool v);
+    bool get_paused(size_t i);
+    void set_paused(size_t i, bool v);
 } // namespace pumps

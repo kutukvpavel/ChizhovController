@@ -14,4 +14,5 @@ namespace mb_regs
     MY_MB_DECLARE_REGS(MY_MB_USB);*/
 
     HAL_StatusTypeDef set_remote(bool enable);
+    HAL_StatusTypeDef set_status(uint16_t s);
 } // namespace mb_regs

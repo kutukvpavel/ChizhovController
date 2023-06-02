@@ -19,12 +19,19 @@ struct PACKED_FOR_MODBUS motor_reg_t
     float volume_rate;
     float rps;
     float err;
-    uint16_t missing;
-    uint16_t overload;
+    uint16_t status;
+    uint16_t reserved1; //Alignment
 };
 
 class motor_t
 {
+    enum status_bits : uint16_t
+    {
+        missing = 0,
+        overload,
+        paused
+    };
+
 private:
     TIM_HandleTypeDef* timer;
     sr_io::out pin_dir;
@@ -45,8 +52,9 @@ public:
     float get_speed_fraction();
     void set_load_err(float v);
     float get_load_fraction();
-    void set_overload(bool v);
     bool get_overload();
     void set_missing(bool v);
     bool get_missing();
+    void set_paused(bool v);
+    bool get_paused();
 };

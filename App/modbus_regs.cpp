@@ -23,15 +23,12 @@
 
 namespace mb_regs
 {
-    enum status_bits : uint16_t
-    {
-
-    };
     enum interface_activity_bits : uint16_t
     {
         receive = 0,
         reload,
-        save_nvs
+        save_nvs,
+        reset
     };
 
     struct PACKED_FOR_MODBUS reg_t
@@ -74,12 +71,14 @@ namespace mb_regs
     };
     static uint16_t* mb_addr;
     static bool remote_enable = false;
-    static SemaphoreHandle_t remote_ctg_mutex = NULL;
+    static SemaphoreHandle_t set_mutex = NULL;
+    static uint16_t status_double_buffer = 0;
 
     void sync_instance(reg_t* p, osSemaphoreId_t mb_sem)
     {
         /** OUTPUT **/
         //Status
+        p->status = status_double_buffer;
 
         //MAX6675 sensors
         auto temps = thermo::get_temperatures();
@@ -98,6 +97,12 @@ namespace mb_regs
         /** INPUT **/
         if (!remote_enable) return;
         if ((p->interface_active & (1u << interface_activity_bits::receive)) == 0) return;
+
+        if (CHECK_ACTIVITY_BIT(interface_activity_bits::reset))
+        {
+            vTaskDelay(pdMS_TO_TICKS(100));
+            HAL_NVIC_SystemReset();
+        }
 
         //Parameters are only modified if reload bit is set
         //Otherwise only IO and pump setpoints are tracked
@@ -135,10 +140,10 @@ namespace mb_regs
     HAL_StatusTypeDef init(uint16_t* addr)
     {
         static_assert(sizeof(reg_t) % 2 == 0); //32-bit alignment
-        assert_param(!remote_ctg_mutex);
+        assert_param(!set_mutex);
 
-        remote_ctg_mutex = xSemaphoreCreateMutex();
-        assert_param(remote_ctg_mutex);
+        set_mutex = xSemaphoreCreateMutex();
+        assert_param(set_mutex);
         mb_addr = addr;
         for (auto &&i : instances)
         {
@@ -152,7 +157,7 @@ namespace mb_regs
             if (i == MY_MB_USB) continue;
             ModbusStart(&(instances[i].cfg));
         }
-        return remote_ctg_mutex ? HAL_OK : HAL_ERROR;
+        return set_mutex ? HAL_OK : HAL_ERROR;
     }
 
     HAL_StatusTypeDef sync()
@@ -170,7 +175,7 @@ namespace mb_regs
             }
             return HAL_BUSY;
         }
-        while (xSemaphoreTake(remote_ctg_mutex, portMAX_DELAY) != pdTRUE);
+        while (xSemaphoreTake(set_mutex, portMAX_DELAY) != pdTRUE);
 
         i = 0;
         for (auto &&j : instances)
@@ -190,7 +195,7 @@ namespace mb_regs
             sync_instance(j.p, j.cfg.ModBusSphrHandle);
         }
 
-        xSemaphoreGive(remote_ctg_mutex);
+        xSemaphoreGive(set_mutex);
         for (i = 0; i < array_size(instances); i++)
         {
             osSemaphoreRelease(instances[i].cfg.ModBusSphrHandle);
@@ -200,12 +205,20 @@ namespace mb_regs
 
     HAL_StatusTypeDef set_remote(bool enable)
     {
-        if (xSemaphoreTake(remote_ctg_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return HAL_BUSY;
+        if (enable == remote_enable) return HAL_OK;
+        if (xSemaphoreTake(set_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return HAL_BUSY;
         remote_enable = enable;
-        xSemaphoreGive(remote_ctg_mutex);
+        xSemaphoreGive(set_mutex);
         return HAL_OK;
     }
-    bool get_
+    HAL_StatusTypeDef set_status(uint16_t s)
+    {
+        if (s == status_double_buffer) return HAL_OK;
+        if (xSemaphoreTake(set_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return HAL_BUSY;
+        status_double_buffer = s;
+        xSemaphoreGive(set_mutex);
+        return HAL_OK;
+    }
 } // namespace mb_regs
 
 _BEGIN_STD_C

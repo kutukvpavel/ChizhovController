@@ -7,6 +7,9 @@
 //private
 #define SPEED_RANGE_NUM 3
 #define MIN_TIMER_ARR (UINT16_MAX / 1000)
+#define SET_STATUS_BIT(b) reg->status |= (1u << (b))
+#define RESET_STATUS_BIT(b) reg->status &= ~(1u << (b))
+#define CHECK_STATUS_BIT(b) ((reg->status & (1u << status_bits::missing)) > 0)
 
 struct speed_range_t
 {
@@ -149,9 +152,43 @@ float motor_t::get_speed_fraction()
 void motor_t::set_load_err(float v)
 {
     reg->err = v;
+    if (v > params.max_load_err) SET_STATUS_BIT(status_bits::overload);
+    else RESET_STATUS_BIT(status_bits::overload);
 }
 
 float motor_t::get_load_fraction()
 {
-    return reg->err / params.max_load_err;
+    float res = abs(reg->err / params.max_load_err);
+    if (res > 1) res = 1;
+    return res;
+}
+
+bool motor_t::get_overload()
+{
+    return CHECK_STATUS_BIT(status_bits::overload);
+}
+void motor_t::set_missing(bool v)
+{
+    if (v) SET_STATUS_BIT(status_bits::missing);
+    else RESET_STATUS_BIT(status_bits::missing);
+}
+bool motor_t::get_missing()
+{
+    return CHECK_STATUS_BIT(status_bits::missing);
+}
+void motor_t::set_paused(bool v)
+{
+    if (get_paused() == v) return;
+    if (v) {
+        HAL_TIM_Base_Stop(timer);
+        SET_STATUS_BIT(status_bits::paused);
+    }
+    else {
+        HAL_TIM_Base_Start(timer);
+        RESET_STATUS_BIT(status_bits::paused);
+    }
+}
+bool motor_t::get_paused()
+{
+    return CHECK_STATUS_BIT(status_bits::paused);
 }

@@ -1,5 +1,6 @@
-#include "user.h"
+#include "display.h"
 
+#include "user.h"
 #include "sr_io.h"
 #include "pumps.h"
 #include "task_handles.h"
@@ -17,15 +18,17 @@ namespace display
     {
         load_fraction = 0,
         speed_fraction = 4,
-        overload = 14,
-        running
+        paused = 13,
+        running,
+        overload
     };
     struct __packed single_channel_map
     {
         uint8_t digits[DIGITS_PER_CHANNEL];
         uint8_t leds[2];
     };
-    single_channel_map buffer[DISPLAY_CHANNELS] = { {}, {}, {} };
+    static single_channel_map buffer[DISPLAY_CHANNELS] = { {}, {}, {} };
+    static test_modes mode = test_modes::none;
 
     uint8_t get_fraction_bits(float v, size_t total_bits)
     {
@@ -40,6 +43,41 @@ namespace display
         }
         return res;
     }
+    void convert_to_7seg(void* dest, const char* src)
+    {
+        const uint8_t digits[] = {
+            0b11111100,
+            0b01100000,
+            0b11011010,
+            0b11110010,
+            0b01100110,
+            0b10110110,
+            0b10111110,
+            0b11100000,
+            0b11111110,
+            0b11100110
+        };
+        const uint8_t point = 0x01;
+        static_assert(array_size(digits) >= ('9' - '0'));
+
+        auto d = reinterpret_cast<uint8_t*>(dest);
+        size_t shift = 0;
+        for (size_t i = 0; i < DIGITS_PER_CHANNEL; i++)
+        {
+            if (src[i + shift] == '.')
+            {
+                shift++;
+                d[i - 1] |= point;
+            }
+            d[i] = ~digits[src[i + shift] - '0'];
+        }
+    }
+    uint16_t convert_to_leds(float speed_fraction, float load_fraction)
+    {
+        return
+            get_fraction_bits(speed_fraction, 8) << leds::speed_fraction |
+            get_fraction_bits(load_fraction, 4) << leds::load_fraction;
+    }
 
     void init()
     {
@@ -53,23 +91,52 @@ namespace display
 
     void compose()
     {
-        static char temp[DIGITS_PER_CHANNEL + 1];
+        static char temp[DIGITS_PER_CHANNEL + 2]; //+ decimal point and a null character
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
+        test_modes m = mode;
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
-            if (pumps::get_missing(i))
+            auto& b = buffer[i];
+            switch (m)
             {
-                memset(&(buffer[i]), 0, sizeof(buffer[i])); //Blank out missing channels
-                continue;
+            case test_modes::all_lit:
+                memset(&(b.digits), 0, sizeof(b.digits));
+                memset(&(b.leds), 1, sizeof(b.leds));
+                break;
+            case test_modes::digits:
+            {
+                convert_to_7seg(&(b.digits), "123.4");
+                uint16_t bits = convert_to_leds(0.45, 0.45);
+                bits |= (1u << leds::overload) | (1u << leds::paused);
+                b.leds[0] = (bits >> 8) & 0xFF;
+                b.leds[1] = bits & 0xFF;
+                break;
             }
-            snprintf(temp, DIGITS_PER_CHANNEL + 1, "%4f", pumps::get_indicated_speed(i));
-            memcpy(buffer[i].digits, temp, DIGITS_PER_CHANNEL);
-            uint16_t bits = 
-                get_fraction_bits(pumps::get_speed_fraction(i), 8) << leds::speed_fraction | 
-                get_fraction_bits(pumps::get_load_fraction(i), 4) << leds::load_fraction;
-            if (pumps::get_overload(i)) bits |= (1u << leds::overload);
+            default:
+            {
+                if (pumps::get_missing(i))
+                {
+                    memset(&(b.digits), 1, sizeof(b.digits)); // Blank out missing channels
+                    memset(&(b.leds), 0, sizeof(b.leds));
+                    continue;
+                }
+                snprintf(temp, DIGITS_PER_CHANNEL + 1, "%5f", pumps::get_indicated_speed(i));
+                convert_to_7seg(&(b.digits), temp);
+                uint16_t bits = convert_to_leds(pumps::get_speed_fraction(i), pumps::get_load_fraction(i));
+                if (pumps::get_overload(i)) bits |= (1u << leds::overload);
+                if (pumps::get_paused(i)) bits |= (1u << leds::paused);
+                b.leds[0] = (bits >> 8) & 0xFF;
+                b.leds[1] = bits & 0xFF;
+                break;
+            }
+            }
         }
+    }
+
+    void set_lamp_test_mode(test_modes m)
+    {
+        mode = m;
     }
 } // namespace display
 
