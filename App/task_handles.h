@@ -11,6 +11,7 @@
 #define MY_CLI 5
 #define MY_MODBUS 6
 #define MY_FP 7
+#define MY_WDT 8
 
 #define STATIC_TASK_HANDLE(name) task_handle_##name
 #define DECLARE_STATIC_TASK(name) extern TaskHandle_t task_handle_##name ; \
@@ -27,5 +28,6 @@ DECLARE_STATIC_TASK(MY_DISP);
 DECLARE_STATIC_TASK(MY_CLI);
 DECLARE_STATIC_TASK(MY_MODBUS);
 DECLARE_STATIC_TASK(MY_FP);
+DECLARE_STATIC_TASK(MY_WDT);
 
 _END_STD_C

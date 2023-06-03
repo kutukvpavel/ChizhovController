@@ -107,15 +107,16 @@ STATIC_TASK_BODY(MY_COPROC)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    pwdt = wdt::register_task(500);
+    pwdt = wdt::register_task(500, "coproc");
 
-    if (coprocessor::init() != HAL_OK) while (1); //wdt will reset the controller
+    if (coprocessor::init() != HAL_OK) { while (1) vTaskDelay(10); } //wdt will reset the controller
 
+    last_wake = xTaskGetTickCount();
     for (;;)
     {
         coprocessor::sync();
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
-        pwdt->last_time = last_wake;
+        pwdt->last_time = xTaskGetTickCount();
     }
 }
 _END_STD_C

@@ -238,7 +238,6 @@ void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
   printf("Wrong parameters value: file %s on line %lu\r\n", file, line);
-  HAL_Delay(100);
   /* USER CODE END 6 */
 }
 #endif /* USE_FULL_ASSERT */

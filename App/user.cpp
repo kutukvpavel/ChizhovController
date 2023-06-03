@@ -40,40 +40,37 @@ DEFINE_STATIC_TASK(MY_THERMO, 256);
 DEFINE_STATIC_TASK(MY_DISP, 1024);
 DEFINE_STATIC_TASK(MY_MODBUS, 1024);
 DEFINE_STATIC_TASK(MY_FP, 256);
+DEFINE_STATIC_TASK(MY_WDT, 256);
 
 modbusHandler_t modbus;
 
 _BEGIN_STD_C
 void StartMainTask(void *argument)
 {
-    const uint32_t delay = 10;
+    const uint32_t delay = 20;
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
-    
-    HAL_IWDG_Refresh(&hiwdg);
 
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_CLI, 1);
     while (!(*cli::ready)) 
     {
         vTaskDelay(pdMS_TO_TICKS(10));
         HAL_IWDG_Refresh(&hiwdg);
     }
+    HAL_IWDG_Refresh(&hiwdg);
+    START_STATIC_TASK(MY_WDT, 1);
 
     DBG("I2C Init...");
     i2c::init();
-    HAL_IWDG_Refresh(&hiwdg);
     DBG("SPI Init...");
     spi::init();
-    HAL_IWDG_Refresh(&hiwdg);
     DBG("NVS Init...");
     if (nvs::init() == HAL_OK) nvs::load();
-    HAL_IWDG_Refresh(&hiwdg);
     DBG("Pump Init...");
     pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
-    HAL_IWDG_Refresh(&hiwdg);
     DBG("USB Init...");
     MX_USB_DEVICE_Init();
-    HAL_IWDG_Refresh(&hiwdg);
 
     DBG("Task init...");
     START_STATIC_TASK(MY_ADC, 1);
@@ -83,15 +80,17 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_DISP, 1);
     START_STATIC_TASK(MY_MODBUS, 1);
     START_STATIC_TASK(MY_FP, 1);
+    
+    vTaskDelay(pdMS_TO_TICKS(100));
+    //while (1) vTaskDelay(10);
 
-    HAL_IWDG_Refresh(&hiwdg);
-    pwdt = wdt::register_task(500);
+    pwdt = wdt::register_task(500, "main");
     last_wake = xTaskGetTickCount();
     for (;;)
     {
         app_main(pwdt);
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
-        pwdt->last_time = last_wake;
+        pwdt->last_time = xTaskGetTickCount();
     }
 }
 _END_STD_C
@@ -146,18 +145,18 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
         if (front_panel::get_button(front_panel::b_start))
         {
+            DBG("State: manual");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_start);
             pumps::switch_hw_interlock();
             state = states::manual;
-            DBG("State: manual");
         }
         if (front_panel::get_button(front_panel::b_light_test))
         {
+            DBG("State: lamp test");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_light_test);
             state = states::lamp_test;
-            DBG("State: lamp test");
         }
         break;
 
@@ -167,17 +166,17 @@ void app_main(wdt::task_t* pwdt)
         supervize_manual_mode();
         if (front_panel::get_button(front_panel::b_start))
         {
+            DBG("State: auto");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_start);
             state = states::automatic;
-            DBG("State: auto");
         }
         if (front_panel::get_button(front_panel::b_stop))
         {
+            DBG("State: init");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
             state = states::init;
-            DBG("State: init");
         }
         break;
 
@@ -187,10 +186,10 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::on);
         if (front_panel::get_button(front_panel::b_stop))
         {
+            DBG("State: manual");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
             state = states::manual;
-            DBG("State: manual");
         }
         break;
 
@@ -200,9 +199,9 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::blink);
         if (front_panel::get_button(front_panel::b_stop))
         {
+            DBG("State: init");
             front_panel::clear_lights();
             state = states::init;
-            DBG("State: init");
         }
         break;
 
@@ -219,10 +218,10 @@ void app_main(wdt::task_t* pwdt)
             mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
             if (mode == display::test_modes::none)
             {
+                DBG("State: init");
                 display::set_lamp_test_mode(display::test_modes::none);
                 mode = display::test_modes::all_lit;
                 state = states::init;
-                DBG("State: init");
             }
         }
         break;
@@ -234,13 +233,11 @@ void app_main(wdt::task_t* pwdt)
         HAL_NVIC_SystemReset();
         break;
     }
-    DBG(".");
     if (!front_panel::get_button(front_panel::b_emergency)) state = states::emergency;
     pumps::set_enable(state == states::automatic || state == states::manual);
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));
 
-    taskYIELD();
     supervize_fp(state);
     supervize_led(led);
 }

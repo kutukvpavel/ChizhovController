@@ -231,9 +231,10 @@ STATIC_TASK_BODY(MY_MODBUS)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    pwdt = wdt::register_task(1000);
+    pwdt = wdt::register_task(1000, "mb");
     if (mb_regs::init(nvs::get_modbus_addr()) != HAL_OK) while(1);
 
+    last_wake = xTaskGetTickCount();
     for (;;)
     {
         delay = mb_regs::sync() == HAL_BUSY ? missed_delay : normal_delay;

@@ -51,15 +51,16 @@ STATIC_TASK_BODY(MY_THERMO)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    pwdt = wdt::register_task(500);
+    pwdt = wdt::register_task(500, "max");
 
     thermo::init();
 
+    last_wake = xTaskGetTickCount();
     for (;;)
     {
+        pwdt->last_time = xTaskGetTickCount();
         thermo::sync();
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
-        pwdt->last_time = last_wake;
     }
 }
 _END_STD_C

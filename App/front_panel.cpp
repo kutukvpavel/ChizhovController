@@ -41,6 +41,7 @@ namespace front_panel
 
     void clear_lights()
     {
+        assert_param(blink_mutex);
         while (xSemaphoreTake(blink_mutex, portMAX_DELAY) != pdTRUE);
         for (size_t i = 0; i < lights::L_LEN; i++)
         {
@@ -51,6 +52,7 @@ namespace front_panel
     }
     void test()
     {
+        assert_param(blink_mutex);
         while (xSemaphoreTake(blink_mutex, portMAX_DELAY) != pdTRUE);
         for (size_t i = 0; i < lights::L_LEN; i++)
         {
@@ -61,6 +63,7 @@ namespace front_panel
     }
     void set_light(lights l, l_state on, size_t channel)
     {
+        assert_param(blink_mutex);
         while (xSemaphoreTake(blink_mutex, portMAX_DELAY) != pdTRUE);
         blink_enable[l] = (on == l_state::blink);
         if (!blink_enable[l]) sr_io::set_output(lights_mapping[l], (on == l_state::on) ? true : false);
