@@ -233,6 +233,7 @@ STATIC_TASK_BODY(MY_MODBUS)
 
     pwdt = wdt::register_task(1000, "mb");
     if (mb_regs::init(nvs::get_modbus_addr()) != HAL_OK) while(1);
+    INIT_NOTIFY(MY_MODBUS);
 
     last_wake = xTaskGetTickCount();
     for (;;)

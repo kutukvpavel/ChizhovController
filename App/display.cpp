@@ -147,6 +147,7 @@ STATIC_TASK_BODY(MY_DISP)
     static uint32_t delay = REGULAR_REPAINT_DELAY_MS;
 
     display::init();
+    INIT_NOTIFY(MY_DISP);
     last_repaint = xTaskGetTickCount();
 
     for (;;)

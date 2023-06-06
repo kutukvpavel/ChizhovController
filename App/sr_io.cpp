@@ -135,6 +135,7 @@ STATIC_TASK_BODY(MY_IO)
     static uint32_t delay = sr_io::regular_sync_delay_ms;
 
     sr_io::init();
+    INIT_NOTIFY(MY_IO);
     last_sync = xTaskGetTickCount();
 
     for (;;)

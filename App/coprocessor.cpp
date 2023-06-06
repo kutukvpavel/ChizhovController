@@ -24,12 +24,13 @@ namespace coprocessor
         uint8_t drv_missing_bitfield;
     };
     static memory_map_t buffer = {};
+    static StaticSemaphore_t sync_mutex_buffer;
     static SemaphoreHandle_t sync_mutex = NULL;
 
     HAL_StatusTypeDef init()
     {
         DBG("Coprocessor init...");
-        sync_mutex = xSemaphoreCreateMutex();
+        sync_mutex = xSemaphoreCreateMutexStatic(&sync_mutex_buffer);
         return sync_mutex ? HAL_OK : HAL_ERROR;
     }
 
@@ -109,7 +110,11 @@ STATIC_TASK_BODY(MY_COPROC)
 
     pwdt = wdt::register_task(500, "coproc");
 
-    if (coprocessor::init() != HAL_OK) { while (1) vTaskDelay(10); } //wdt will reset the controller
+    if (coprocessor::init() != HAL_OK) { 
+        ERR("Failed to init coprocessor task, resetting");
+        while (1) vTaskDelay(10); 
+    } //wdt will reset the controller
+    INIT_NOTIFY(MY_COPROC);
 
     last_wake = xTaskGetTickCount();
     for (;;)

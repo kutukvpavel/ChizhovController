@@ -4,6 +4,7 @@
 #include "task_handles.h"
 #include "pumps.h"
 #include "compat_api.h"
+#include "wdt.h"
 
 namespace front_panel
 {
@@ -121,7 +122,9 @@ STATIC_TASK_BODY(MY_FP)
     const uint32_t missed_delay = 100;
     static uint32_t delay = regular_delay;
 
+    DBG("FP init...");
     front_panel::init();
+    INIT_NOTIFY(MY_FP);
 
     for (;;)
     {

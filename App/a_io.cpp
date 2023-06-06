@@ -68,6 +68,7 @@ _BEGIN_STD_C
 STATIC_TASK_BODY(MY_ADC)
 {
     a_io::init();
+    INIT_NOTIFY(MY_ADC);
 
     for (;;)
     {

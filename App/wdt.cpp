@@ -20,22 +20,24 @@ namespace wdt
       instance->last_time = xTaskGetTickCount();
       instance->name = name;
 
-      DBG("Registered task WDT: %s = #%u", name, registered_tasks);
+      DBG("Registered task WDT: %s = #%u @ %lu", name, registered_tasks, instance->last_time);
       return instance;
    }
 
    void process(TickType_t now)
    {
+      if (registered_tasks == 0) return;
+      //While no tasks have yet been registered we consider WDT feeding to be a responsiblity of the single present thread
       for(size_t i = 0; i < registered_tasks; i++){
          TickType_t diff = now - tasks[ i ].last_time;
          if( diff > tasks[i].deadline )
          {
             //Let hardware WDT reset us
-            if (tasks[i].name) DBG("Task %s WDT!", tasks[i].name);
-            vTaskDelay(pdMS_TO_TICKS(1000));
+            auto& t = tasks[i];
+            if (t.name) ERR("Task %s WDT @ %lu!", t.name, t.last_time);
+            vTaskDelay(pdMS_TO_TICKS(100));
             vTaskSuspendAll();
             taskDISABLE_INTERRUPTS();
-            LL_GPIO_SetOutputPin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
             while( 1 );
          }
       }
@@ -49,11 +51,14 @@ STATIC_TASK_BODY(MY_WDT)
    const uint32_t delay = 100;
    static TickType_t last_wake;
 
+   INIT_NOTIFY(MY_WDT);
+
    last_wake = xTaskGetTickCount();
    for (;;)
    {
       wdt::process(last_wake);
       vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
+      last_wake = xTaskGetTickCount();
    }
 }
 _END_STD_C

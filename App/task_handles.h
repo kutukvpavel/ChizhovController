@@ -17,6 +17,9 @@
 #define DECLARE_STATIC_TASK(name) extern TaskHandle_t task_handle_##name ; \
     extern void start_task_##name (void *argument)
 #define STATIC_TASK_BODY(name) void start_task_##name (void *argument)
+#define INIT_NOTIFY(name)   DBG("Task " #name " init OK!"); \
+    assert_param(argument); \
+    xTaskNotifyGive(*reinterpret_cast<TaskHandle_t*>(argument))
 
 _BEGIN_STD_C
 

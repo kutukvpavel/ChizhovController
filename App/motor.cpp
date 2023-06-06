@@ -77,26 +77,30 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
 
     params_mutex = xSemaphoreCreateMutex();
     assert_param(params_mutex);
+    assert_param(tim);
+    assert_param(p);
+    assert_param(r);
 
-    if (tim->Instance == TIM3)
+    if (timer->Instance == TIM3)
     {
         MX_TIM3_Init();
     }
-    else if (tim->Instance == TIM4)
+    else if (timer->Instance == TIM4)
     {
         MX_TIM4_Init();
     }
-    else if (tim->Instance == TIM10)
+    else if (timer->Instance == TIM10)
     {
         MX_TIM10_Init();
     }
-    else if (tim->Instance == TIM11)
+    else if (timer->Instance == TIM11)
     {
         MX_TIM11_Init();
     }
     else
     {
-        DBG("Unknown pump timer!");
+        DBG("Unknown pump timer at %p!\n\tTIM3=%p\n\tTIM4=%p\n\tTIM10=%p\n\tTIM11=%p", timer->Instance, 
+            TIM3, TIM4, TIM10, TIM11);
     }
 }
 

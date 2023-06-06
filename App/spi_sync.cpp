@@ -32,6 +32,17 @@ namespace spi
         return mutex_handle ? HAL_OK : HAL_ERROR;
     }
 
+    HAL_StatusTypeDef change_device(size_t device_index)
+    {
+        assert_param(device_index > 0);
+        assert_param(mutex_handle);
+        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_ERROR;
+
+        set_cs_mux(device_index);
+
+        xSemaphoreGiveRecursive(mutex_handle);
+    }
+
     HAL_StatusTypeDef acquire_bus(size_t device_index)
     {
         assert_param(device_index > 0);

@@ -40,7 +40,7 @@ cFlags:
   - -std=gnu99
 
 cxxFlags:
-  - -std=c++11
+  - -std=gnu++11
 
 assemblyFlags: 
   - -Wall

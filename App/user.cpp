@@ -14,15 +14,15 @@
 #include "front_panel.h"
 #include "coprocessor.h"
 #include "../USB_DEVICE/App/usb_device.h"
-#include "dbg_shell.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
     StackType_t task_stack_##name [stack_size]; \
     TaskHandle_t task_handle_##name = NULL
-#define START_STATIC_TASK(name, priority) \
-    xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), NULL, \
-    priority, task_stack_##name, &task_buffer_##name)
+#define START_STATIC_TASK(name, priority, arg) \
+    xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), &(arg), \
+    priority, task_stack_##name, &task_buffer_##name); \
+    ulTaskNotifyTake(pdFALSE, portMAX_DELAY)
 #define WAIT_ON_BTN(b) \
     while (front_panel::get_button(b)) \
     {   \
@@ -50,17 +50,19 @@ void StartMainTask(void *argument)
     const uint32_t delay = 20;
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
+    static TaskHandle_t handle;
 
     HAL_IWDG_Refresh(&hiwdg);
-    START_STATIC_TASK(MY_CLI, 1);
-    while (!(*cli::ready)) 
-    {
-        vTaskDelay(pdMS_TO_TICKS(10));
-        HAL_IWDG_Refresh(&hiwdg);
-    }
-    HAL_IWDG_Refresh(&hiwdg);
-    START_STATIC_TASK(MY_WDT, 1);
 
+    handle = xTaskGetCurrentTaskHandle();
+    assert_param(handle);
+
+    START_STATIC_TASK(MY_CLI, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
+    START_STATIC_TASK(MY_WDT, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
+    
+    DBG("[@ %lu] Single-threaded init:", compat::micros());
     DBG("I2C Init...");
     i2c::init();
     DBG("SPI Init...");
@@ -71,20 +73,22 @@ void StartMainTask(void *argument)
     pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
     DBG("USB Init...");
     MX_USB_DEVICE_Init();
+    HAL_IWDG_Refresh(&hiwdg);
 
-    DBG("Task init...");
-    START_STATIC_TASK(MY_ADC, 1);
-    START_STATIC_TASK(MY_IO, 1);
-    START_STATIC_TASK(MY_COPROC, 1);
-    START_STATIC_TASK(MY_THERMO, 1);
-    START_STATIC_TASK(MY_DISP, 1);
-    START_STATIC_TASK(MY_MODBUS, 1);
-    START_STATIC_TASK(MY_FP, 1);
+    DBG("[@ %lu] Staring tasks. Multithreaded init:", compat::micros());
+    START_STATIC_TASK(MY_ADC, 1, handle);
+    START_STATIC_TASK(MY_IO, 1, handle);
+    START_STATIC_TASK(MY_COPROC, 1, handle);
+    START_STATIC_TASK(MY_THERMO, 1, handle);
+    START_STATIC_TASK(MY_DISP, 1, handle);
+    START_STATIC_TASK(MY_MODBUS, 1, handle);
+    START_STATIC_TASK(MY_FP, 1, handle);
     
+    HAL_IWDG_Refresh(&hiwdg);
     vTaskDelay(pdMS_TO_TICKS(100));
     //while (1) vTaskDelay(10);
 
-    pwdt = wdt::register_task(500, "main");
+    pwdt = wdt::register_task(1000, "main");
     last_wake = xTaskGetTickCount();
     for (;;)
     {

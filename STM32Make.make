@@ -234,7 +234,7 @@ endif
 # Add additional flags
 CFLAGS += -Wall -fdata-sections -ffunction-sections -std=gnu99 
 ASFLAGS += -Wall -fdata-sections -ffunction-sections 
-CXXFLAGS += -std=c++11 
+CXXFLAGS += -std=gnu++11 
 
 # Generate dependency information
 CFLAGS += -MMD -MP -MF"$(@:%.o=%.d)"
