@@ -102,15 +102,16 @@ int main(void)
   MX_I2C2_Init();
   MX_RTC_Init();
   MX_SPI1_Init();
+  MX_TIM2_Init();
+  MX_TIM5_Init();
   MX_USART1_UART_Init();
   MX_USART2_UART_Init();
-  MX_TIM2_Init();
   MX_CRC_Init();
   MX_IWDG_Init();
-  MX_TIM5_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_IWDG_Refresh(&hiwdg);
+  HAL_TIM_Base_Start(&htim5); //Start microsecond-resolution timer
   HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);
   HAL_Delay(100);
   HAL_GPIO_TogglePin(Onboard_LED_GPIO_Port, Onboard_LED_Pin);

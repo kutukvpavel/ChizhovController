@@ -231,8 +231,8 @@ STATIC_TASK_BODY(MY_MODBUS)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    pwdt = wdt::register_task(1000, "mb");
     if (mb_regs::init(nvs::get_modbus_addr()) != HAL_OK) while(1);
+    pwdt = wdt::register_task(1000, "mb");
     INIT_NOTIFY(MY_MODBUS);
 
     last_wake = xTaskGetTickCount();

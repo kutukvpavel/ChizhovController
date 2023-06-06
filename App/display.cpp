@@ -4,6 +4,7 @@
 #include "sr_io.h"
 #include "pumps.h"
 #include "task_handles.h"
+#include "wdt.h"
 
 #include <string.h>
 
@@ -145,8 +146,10 @@ STATIC_TASK_BODY(MY_DISP)
 {
     static TickType_t last_repaint;
     static uint32_t delay = REGULAR_REPAINT_DELAY_MS;
+    static wdt::task_t* pwdt;
 
     display::init();
+    pwdt = wdt::register_task(400);
     INIT_NOTIFY(MY_DISP);
     last_repaint = xTaskGetTickCount();
 
@@ -155,6 +158,7 @@ STATIC_TASK_BODY(MY_DISP)
         vTaskDelayUntil(&last_repaint, pdMS_TO_TICKS(delay));
         display::compose();
         delay = (display::repaint() == HAL_OK) ? REGULAR_REPAINT_DELAY_MS : MISSED_REPAINT_DELAY_MS;
+        pwdt->last_time = xTaskGetTickCount();
     }
 }
 _END_STD_C

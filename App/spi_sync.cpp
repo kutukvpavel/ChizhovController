@@ -36,19 +36,18 @@ namespace spi
     {
         assert_param(device_index > 0);
         assert_param(mutex_handle);
-        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_ERROR;
+        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_BUSY;
 
         set_cs_mux(device_index);
 
-        xSemaphoreGiveRecursive(mutex_handle);
+        return (xSemaphoreGiveRecursive(mutex_handle) == pdTRUE) ? HAL_OK : HAL_ERROR;
     }
 
     HAL_StatusTypeDef acquire_bus(size_t device_index)
     {
-        assert_param(device_index > 0);
         assert_param(mutex_handle);
         
-        if (xSemaphoreTake(mutex_handle, pdMS_TO_TICKS(10)) != pdTRUE) return HAL_BUSY;
+        if (xSemaphoreTakeRecursive(mutex_handle, pdMS_TO_TICKS(10)) != pdTRUE) return HAL_BUSY;
 
         set_cs_mux(device_index);
 
@@ -59,7 +58,7 @@ namespace spi
     HAL_StatusTypeDef receive(uint8_t* buffer, uint16_t len)
     {
         assert_param(mutex_handle);
-        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_ERROR;
+        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_BUSY;
 
         HAL_StatusTypeDef ret = HAL_SPI_Receive(&hspi1, buffer, len, 10);
 
@@ -74,6 +73,6 @@ namespace spi
         set_cs_mux(0);
 
         //Release reviously acquired mutex!
-        return (xSemaphoreGive(mutex_handle) == pdTRUE) ? HAL_OK : HAL_ERROR;
+        return (xSemaphoreGiveRecursive(mutex_handle) == pdTRUE) ? HAL_OK : HAL_ERROR;
     }
 } // namespace spi

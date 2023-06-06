@@ -10,7 +10,7 @@ target: Чижов
 # Can be C or C++
 language: C
 
-optimization: Og
+optimization: O2
 
 # MCU settings
 targetMCU: stm32f4x

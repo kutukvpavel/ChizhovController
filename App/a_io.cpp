@@ -3,6 +3,8 @@
 #include "task_handles.h"
 #include "average/average.h"
 #include "../Core/Inc/adc.h"
+#include "../Core/Inc/tim.h"
+#include "wdt.h"
 
 #define PACKED_FOR_DMA __packed __aligned(sizeof(uint32_t))
 #define CHANNEL_REPETITION 4
@@ -17,7 +19,7 @@ namespace a_io
         uint16_t vref;
         uint16_t vbat;
     };
-    PACKED_FOR_DMA a_buffer_t buffer[CHANNEL_REPETITION] = { };
+    a_buffer_t buffer[CHANNEL_REPETITION] = { };
     uint16_t* mappings[in::LEN][CHANNEL_REPETITION] = { MAP(0), MAP(1), MAP(2), MAP(3) };
     struct channel
     {
@@ -36,6 +38,7 @@ namespace a_io
         //Here sizeof()-magic is not intended to compute array size, ignore the warning
         //[ instead it computes whole DMA buffer length in half-words ]
         HAL_ADC_Start_DMA(&hadc1, reinterpret_cast<uint32_t*>(&buffer), sizeof(buffer) / sizeof(uint16_t));
+        HAL_TIM_Base_Start(&htim2); //Start ADC trigger timer
     }
 
     void process_data()
@@ -67,13 +70,17 @@ namespace a_io
 _BEGIN_STD_C
 STATIC_TASK_BODY(MY_ADC)
 {
+    static wdt::task_t* pwdt;
+
     a_io::init();
+    pwdt = wdt::register_task(500, "a_io");
     INIT_NOTIFY(MY_ADC);
 
     for (;;)
     {
         if (!ulTaskNotifyTake(pdTRUE, pdMS_TO_TICKS(20))) continue;
         a_io::process_data();
+        pwdt->last_time = xTaskGetTickCount();
     }
 }
 _END_STD_C

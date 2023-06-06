@@ -3,6 +3,7 @@
 #include "../Core/Inc/gpio.h"
 #include "compat_api.h"
 #include "task_handles.h"
+#include "wdt.h"
 
 #define BIT_TO_WORD_IDX(b) ((b) / BUF_WORD_BITS)
 #define BIT_REMAINDER_IDX(b) ((b) % BUF_WORD_BITS) 
@@ -133,14 +134,19 @@ STATIC_TASK_BODY(MY_IO)
 {
     static TickType_t last_sync;
     static uint32_t delay = sr_io::regular_sync_delay_ms;
+    static wdt::task_t* pwdt;
 
     sr_io::init();
+    pwdt = wdt::register_task(500, "io");
     INIT_NOTIFY(MY_IO);
     last_sync = xTaskGetTickCount();
 
     for (;;)
     {
         vTaskDelayUntil(&last_sync, pdMS_TO_TICKS(delay));
+        last_sync = xTaskGetTickCount();
+        pwdt->last_time = last_sync;
+        
         delay = (sr_io::sync_io() == HAL_OK) ? sr_io::regular_sync_delay_ms : sr_io::missed_sync_delay_ms;
     }
 }

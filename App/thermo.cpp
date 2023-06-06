@@ -39,32 +39,39 @@ namespace thermo
         DBG("MAX6675 Init...");
 
         size_t i = 3;
-        while (spi::acquire_bus(0) != HAL_OK)
+        while (--i)
         {
+            if (spi::acquire_bus(0) == HAL_OK) break;
             vTaskDelay(pdMS_TO_TICKS(30));
-            if (--i == 0) break;
         }
         if (i == 0)
         {
-            ERR("Failed to acquire SPI bus for MAX6675 init!");
+            ERR("Failed to acquire SPI bus for init!");
             return;
+        }
+        else
+        {
+            DBG("Acquired SPI bus for module probing.");
         }
 
         uint8_t buffer[2] = { 0xFF, 0xFF };
         for (i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
         {
+            DBG("Setting CS_MUX to %u", modules[i].spi_index);
             HAL_StatusTypeDef res = spi::change_device(modules[i].spi_index);
             if (res != HAL_OK) continue;
+            DBG("Probing #%u", i);
             res = spi::receive(buffer, array_size(buffer)); //Given word length of 8 bits!
             modules[i].present = (res == HAL_OK) && (buffer[0] != 0xFF) && (buffer[1] != 0xFF); //Assuming MISO has a weak pullup
         }
 
         spi::release_bus();
+        DBG("Released SPI bus");
 
         for (i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
         {
             if (!modules[i].present) continue;
-            DBG("Found MAX6675 #%u at CS_MUX=%u", i, modules[i].spi_index);
+            DBG("Found module #%u at CS_MUX=%u", i, modules[i].spi_index);
         }
     }
 
@@ -95,11 +102,9 @@ STATIC_TASK_BODY(MY_THERMO)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    pwdt = wdt::register_task(500, "max");
-
     thermo::init();
+    pwdt = wdt::register_task(500, "max");
     INIT_NOTIFY(MY_THERMO);
-
     last_wake = xTaskGetTickCount();
     for (;;)
     {

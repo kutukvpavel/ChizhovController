@@ -35,7 +35,6 @@ namespace front_panel
 
     void init()
     {
-        DBG("Front panel init...");
         blink_mutex = xSemaphoreCreateMutex();
         assert_param(blink_mutex);
     }
@@ -121,9 +120,11 @@ STATIC_TASK_BODY(MY_FP)
     const uint32_t regular_delay = 1000; //ms
     const uint32_t missed_delay = 100;
     static uint32_t delay = regular_delay;
+    static wdt::task_t* pwdt;
 
-    DBG("FP init...");
+    DBG("Front Panel init...");
     front_panel::init();
+    pwdt = wdt::register_task(2000);
     INIT_NOTIFY(MY_FP);
 
     for (;;)
@@ -145,6 +146,7 @@ STATIC_TASK_BODY(MY_FP)
             sr_io::set_output(front_panel::lights_mapping[i], front_panel::blink_state[i]);
         }
         xSemaphoreGive(front_panel::blink_mutex);
+        pwdt->last_time = xTaskGetTickCount();
     }
 }
 _END_STD_C

@@ -20,7 +20,7 @@
     StackType_t task_stack_##name [stack_size]; \
     TaskHandle_t task_handle_##name = NULL
 #define START_STATIC_TASK(name, priority, arg) \
-    xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), &(arg), \
+    task_handle_##name = xTaskCreateStatic(start_task_##name, #name, array_size(task_stack_##name), &(arg), \
     priority, task_stack_##name, &task_buffer_##name); \
     ulTaskNotifyTake(pdFALSE, portMAX_DELAY)
 #define WAIT_ON_BTN(b) \
@@ -77,11 +77,17 @@ void StartMainTask(void *argument)
 
     DBG("[@ %lu] Staring tasks. Multithreaded init:", compat::micros());
     START_STATIC_TASK(MY_ADC, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_IO, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_COPROC, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_THERMO, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_DISP, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_MODBUS, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_FP, 1, handle);
     
     HAL_IWDG_Refresh(&hiwdg);
@@ -159,7 +165,7 @@ void app_main(wdt::task_t* pwdt)
         {
             DBG("State: lamp test");
             front_panel::clear_lights();
-            WAIT_ON_BTN(front_panel::b_light_test);
+            //WAIT_ON_BTN(front_panel::b_light_test);
             state = states::lamp_test;
         }
         break;
@@ -215,10 +221,10 @@ void app_main(wdt::task_t* pwdt)
 
         front_panel::test();
         display::set_lamp_test_mode(mode);
-        if (front_panel::get_button(front_panel::b_light_test))
+        if (!front_panel::get_button(front_panel::b_light_test))
         {
             front_panel::clear_lights();
-            WAIT_ON_BTN(front_panel::b_light_test);
+            //WAIT_ON_BTN(front_panel::b_light_test);
             mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
             if (mode == display::test_modes::none)
             {
@@ -227,6 +233,7 @@ void app_main(wdt::task_t* pwdt)
                 mode = display::test_modes::all_lit;
                 state = states::init;
             }
+            vTaskDelay(pdMS_TO_TICKS(50));
         }
         break;
     }

@@ -67,7 +67,7 @@ void MX_TIM2_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM2_Init 2 */
-
+  HAL_TIM_Base_MspInit(&htim2);
   /* USER CODE END TIM2_Init 2 */
 
 }
@@ -120,7 +120,7 @@ void MX_TIM3_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM3_Init 2 */
-
+  HAL_TIM_Base_MspInit(&htim3);
   /* USER CODE END TIM3_Init 2 */
   HAL_TIM_MspPostInit(&htim3);
 
@@ -174,7 +174,7 @@ void MX_TIM4_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM4_Init 2 */
-
+  HAL_TIM_Base_MspInit(&htim4);
   /* USER CODE END TIM4_Init 2 */
   HAL_TIM_MspPostInit(&htim4);
 
@@ -215,7 +215,7 @@ void MX_TIM5_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM5_Init 2 */
-  
+  HAL_TIM_Base_MspInit(&htim5);
   /* USER CODE END TIM5_Init 2 */
 
 }
@@ -255,7 +255,7 @@ void MX_TIM10_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM10_Init 2 */
-
+  HAL_TIM_Base_MspInit(&htim10);
   /* USER CODE END TIM10_Init 2 */
   HAL_TIM_MspPostInit(&htim10);
 
@@ -296,7 +296,7 @@ void MX_TIM11_Init(void)
     Error_Handler();
   }
   /* USER CODE BEGIN TIM11_Init 2 */
-
+  HAL_TIM_Base_MspInit(&htim11);
   /* USER CODE END TIM11_Init 2 */
   HAL_TIM_MspPostInit(&htim11);
 
