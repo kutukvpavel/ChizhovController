@@ -94,7 +94,7 @@ void StartMainTask(void *argument)
     vTaskDelay(pdMS_TO_TICKS(100));
     //while (1) vTaskDelay(10);
 
-    pwdt = wdt::register_task(1000, "main");
+    pwdt = wdt::register_task(2000, "main");
     last_wake = xTaskGetTickCount();
     for (;;)
     {
@@ -219,6 +219,7 @@ void app_main(wdt::task_t* pwdt)
     {
         static display::test_modes mode = display::test_modes::all_lit;
 
+        led = led_states::COMMUNICATION;
         front_panel::test();
         display::set_lamp_test_mode(mode);
         if (!front_panel::get_button(front_panel::b_light_test))

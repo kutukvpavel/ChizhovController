@@ -81,27 +81,28 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
     assert_param(p);
     assert_param(r);
 
-    if (timer->Instance == TIM3)
+    if (timer == &htim3)
     {
         MX_TIM3_Init();
     }
-    else if (timer->Instance == TIM4)
+    else if (timer == &htim4)
     {
         MX_TIM4_Init();
     }
-    else if (timer->Instance == TIM10)
+    else if (timer == &htim10)
     {
         MX_TIM10_Init();
     }
-    else if (timer->Instance == TIM11)
+    else if (timer == &htim11)
     {
         MX_TIM11_Init();
     }
     else
     {
-        DBG("Unknown pump timer at %p!\n\tTIM3=%p\n\tTIM4=%p\n\tTIM10=%p\n\tTIM11=%p", timer->Instance, 
-            TIM3, TIM4, TIM10, TIM11);
+        ERR("Unknown pump timer at %p!\n\tTIM3=%p\n\tTIM4=%p\n\tTIM10=%p\n\tTIM11=%p", timer, 
+            &htim3, &htim4, &htim10, &htim11);
     }
+    DBG("Created a pump: TIM @ %p, DIR @ %u, params @ %p, reg @ %p", timer->Instance, dir, p, r);
 }
 
 motor_t::~motor_t()

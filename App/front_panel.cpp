@@ -124,7 +124,7 @@ STATIC_TASK_BODY(MY_FP)
 
     DBG("Front Panel init...");
     front_panel::init();
-    pwdt = wdt::register_task(2000);
+    pwdt = wdt::register_task(2000, "FP");
     INIT_NOTIFY(MY_FP);
 
     for (;;)

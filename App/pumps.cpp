@@ -18,6 +18,7 @@ namespace pumps
         set_enable(false);
         for (size_t i = 0; i < array_size(motors); i++)
         {
+            assert_param(m_timers[i]);
             motors[i] = new motor_t(m_timers[i], static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
         }
     }

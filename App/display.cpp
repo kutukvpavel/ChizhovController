@@ -149,7 +149,7 @@ STATIC_TASK_BODY(MY_DISP)
     static wdt::task_t* pwdt;
 
     display::init();
-    pwdt = wdt::register_task(400);
+    pwdt = wdt::register_task(400, "disp");
     INIT_NOTIFY(MY_DISP);
     last_repaint = xTaskGetTickCount();
 
