@@ -6,7 +6,7 @@
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
 #define MY_NVS_VER_ADDR 0u
 #define MY_NVS_START_ADDRESS 8u
-#define MY_NVS_VERSION 0u
+#define MY_NVS_VERSION 1u
 #define MY_NVS_PAGE_SIZE 8u
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
@@ -124,12 +124,17 @@ namespace nvs
 
         if ((ret = eeprom_read(MY_NVS_VER_ADDR, &nvs_ver, sizeof(nvs_ver))) != HAL_OK) return ret;
         DBG("Detected NVS ver: %u", nvs_ver);
-        if (nvs_ver != MY_NVS_VERSION) return HAL_ERROR;
+        if (nvs_ver != MY_NVS_VERSION) 
+        {
+            ERR("NVS version mismatch, sould be: %u!", MY_NVS_VERSION);
+            return HAL_ERROR;
+        }
         return HAL_OK;
     }
     HAL_StatusTypeDef load()
     {
         HAL_StatusTypeDef ret;
+        DBG("Loading NVS...");
 
         if (nvs_ver != MY_NVS_VERSION) return HAL_ERROR;
         if ((ret = eeprom_read(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&storage), sizeof(storage))) != HAL_OK) return ret;

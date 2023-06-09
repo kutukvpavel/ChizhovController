@@ -5,6 +5,7 @@
 namespace coprocessor
 {
     bool get_initialized();
+    HAL_StatusTypeDef reinit();
     uint32_t get_crc_err_stats();
 
     uint32_t get_encoder_value(size_t i);

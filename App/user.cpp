@@ -80,8 +80,6 @@ void StartMainTask(void *argument)
     HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_IO, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
-    START_STATIC_TASK(MY_COPROC, 1, handle);
-    HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_THERMO, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_DISP, 1, handle);
@@ -89,6 +87,8 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_MODBUS, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_FP, 1, handle);
+    HAL_IWDG_Refresh(&hiwdg);
+    START_STATIC_TASK(MY_COPROC, 1, handle);
     
     HAL_IWDG_Refresh(&hiwdg);
     vTaskDelay(pdMS_TO_TICKS(100));

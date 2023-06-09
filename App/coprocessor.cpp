@@ -7,7 +7,7 @@
 #include "crc.h"
 
 #define MAX_ENCODERS 3
-#define COPROCESSOR_ADDR 0x08
+#define COPROCESSOR_ADDR (0x08 << 1u)
 #define COPROCESSOR_INIT_BYTE 0xA0
 #define PACKED_FOR_I2C __packed __aligned(sizeof(uint32_t))
 
@@ -38,7 +38,26 @@ namespace coprocessor
     {
         DBG("Coprocessor init...");
         sync_mutex = xSemaphoreCreateMutexStatic(&sync_mutex_buffer);
-        return sync_mutex ? HAL_OK : HAL_ERROR;
+        if (!sync_mutex) return HAL_ERROR;
+
+        return reinit();
+    }
+    HAL_StatusTypeDef reinit()
+    {
+        // Actual write only affects coprocessor status LED
+        //  This piece is mainly needed to prevent manual mode from fetching initial zero-initialized variables
+        //  Before the very first read
+        HAL_StatusTypeDef ret = i2c::write_byte(COPROCESSOR_ADDR, COPROCESSOR_INIT_BYTE);
+        DBG("Coproc init byte sender returns: %u", ret);
+        if (ret != HAL_OK) return ret;
+        vTaskDelay(pdMS_TO_TICKS(1));
+
+        ret = i2c::read(COPROCESSOR_ADDR, 
+            reinterpret_cast<volatile uint8_t*>(filled_buffer), sizeof(memory_map_t));
+        DBG("Coprocessor read returns: %u", ret);
+        initialized = (ret == HAL_OK);
+
+        return ret;
     }
 
     uint8_t crc8_avr(uint8_t inCrc, uint8_t inData)
@@ -72,11 +91,6 @@ namespace coprocessor
         }
         if (crc == standby_buffer->crc)
         {
-            // Actual write only affects coprocessor status LED
-            // This piece is mainly needed to prevent manual mode from fetching initial zero-initialized variables
-            // Before the very first read
-            if (!initialized) initialized = (i2c::write_byte(COPROCESSOR_ADDR, COPROCESSOR_INIT_BYTE) == HAL_OK);
-
             if (xSemaphoreTake(sync_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return;
             volatile memory_map_t *p = filled_buffer;
             filled_buffer = standby_buffer;
@@ -162,7 +176,7 @@ STATIC_TASK_BODY(MY_COPROC)
     pwdt = wdt::register_task(500, "coproc");
 
     if (coprocessor::init() != HAL_OK) { 
-        ERR("Failed to init coprocessor task, resetting");
+        ERR("Failed to init coprocessor task");
         while (1) vTaskDelay(10); 
     } //wdt will reset the controller
     INIT_NOTIFY(MY_COPROC);

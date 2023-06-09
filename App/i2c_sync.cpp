@@ -30,7 +30,6 @@ namespace i2c
         HAL_StatusTypeDef ret = HAL_I2C_Master_Transmit(&hi2c2, dev_addr, &data, 1, timeout);
 
         RELEASE_MUTEX();
-        DBG("I2C write_byte returns %u", ret);
         return ret;
     }
     //This function blocks on a task notification (no busy wait)
