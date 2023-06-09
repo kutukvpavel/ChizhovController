@@ -111,6 +111,7 @@ namespace nvs
         if (remainder > 0)
         {
             status = i2c::mem_write(MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, buf, remainder);
+            vTaskDelay(pdMS_TO_TICKS(5));
         }
         return status;
     }
