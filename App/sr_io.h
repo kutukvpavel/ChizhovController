@@ -70,6 +70,7 @@ namespace sr_io
     void set_output(out i, bool v);
     const sr_buf_t* get_inputs();
     const sr_buf_t* get_outputs();
+    bool get_output(out i);
     
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait);
 } // namespace sr_io

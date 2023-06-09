@@ -21,6 +21,7 @@ namespace pumps
     void reload_params();
 
     void set_enable(bool v);
+    bool get_enabled();
     void switch_hw_interlock();
 
     float get_indicated_speed(size_t i);

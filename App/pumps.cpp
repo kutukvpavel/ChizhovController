@@ -48,6 +48,10 @@ namespace pumps
         sr_io::set_output(sr_io::out::MOTORS_EN, params->invert_enable ? !v : v);
         enable = v;
     }
+    bool get_enabled()
+    {
+        return enable;
+    }
     float get_indicated_speed(size_t i)
     {
         assert_param(i < MY_PUMPS_NUM);

@@ -7,6 +7,10 @@
 #include "nvs.h"
 #include "coprocessor.h"
 #include "i2c_sync.h"
+#include "sr_io.h"
+#include "a_io.h"
+#include "pumps.h"
+#include "thermo.h"
 
 static void init();
 
@@ -36,6 +40,72 @@ namespace cli_commands
     {
         puts(MY_FIRMWARE_INFO_STR);
         return 0;
+    }
+    uint8_t peripherals_report(int argc, char** argv)
+    {
+        fputs("\tSR_IO state:\n\t\tInputs = 0b", stdout);
+        for (size_t i = 0; i < sr_io::in::IN_LEN; i++)
+        {
+            putc(sr_io::get_input(i) ? '1' : '0', stdout);
+        }
+        fputs("\n\t\tOutputs = 0b", stdout);
+        for (size_t i = 0; i < sr_io::out::OUT_LEN; i++)
+        {
+            putc(sr_io::get_output(i) ? '1' : '0', stdout);
+        }
+        printf("\n\tA_IO state:\n"
+            "\t\tAmbient = %f\n"
+            "\t\tThermocouple = %f\n"
+            "\t\tVbat = %f\n"
+            "\t\tVref = %f\n",
+            a_io::get_input(a_io::in::ambient_temp),
+            a_io::get_input(a_io::in::analog_thermocouple),
+            a_io::get_input(a_io::in::vbat),
+            a_io::get_input(a_io::in::vref));
+        puts("\tMAX6675 Thermocouple state:");
+        for (size_t i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
+        {
+            printf("\t\t#%u = %f\n", i, thermo::get_temperatures()[i]);
+        }
+        return 0;
+    }
+    uint8_t pumps_report(int argc, char** argv)
+    {
+        printf("\tPumps enabled: %u\n", pumps::get_enabled());
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            printf("\tUnit #%u:\n"
+                "\t\tMissing: %u\n"
+                "\t\tOverload: %u\n"
+                "\t\tIndicated speed = %f\n"
+                "\t\tSpeed fraction = %f\n"
+                "\t\tLoad fraction = %f\n"
+                "\t\tPaused: %u\n",
+                i,
+                pumps::get_missing(i),
+                pumps::get_overload(i),
+                pumps::get_indicated_speed(i),
+                pumps::get_speed_fraction(i),
+                pumps::get_load_fraction(i),
+                pumps::get_paused(i));
+        }
+    }
+    uint8_t coproc_report(int argc, char** argv)
+    {
+        printf("\tManual override = %f\n", coprocessor::get_manual_override());
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            printf("\tUnit #%u:\n"
+                "\t\tDrv missing: %u\n",
+                "\t\tDrv error: %u\n",
+                "\t\tEncoder position = %u\n"
+                "\t\tEncoder btn pressed: %u\n",
+                i,
+                coprocessor::get_drv_missing(i),
+                coprocessor::get_drv_error(i),
+                coprocessor::get_encoder_value(i),
+                coprocessor::get_encoder_btn_pressed(i));
+        }
     }
 
     uint8_t nvs_save(int argc, char** argv)
@@ -93,6 +163,11 @@ void init()
     CLI_INIT(&huart1);
 
     CLI_ADD_CMD("info", "Get device info", &cli_commands::info);
+
+    CLI_ADD_CMD("periph_report", "Report peripheral state", &cli_commands::peripherals_report);
+    CLI_ADD_CMD("coproc_report", "Report coprocessor-controled devices' state", &cli_commands::coproc_report);
+    CLI_ADD_CMD("pumps_report", "Report pump state", &cli_commands::pumps_report);
+
     CLI_ADD_CMD("nvs_save", "Save current non-volatile data into EEPROM", &cli_commands::nvs_save);
     CLI_ADD_CMD("nvs_load", "Load non-volatile data from EEPROM", &cli_commands::nvs_load);
     CLI_ADD_CMD("nvs_dump", "Perform EEPROM HEX-dump", &cli_commands::nvs_dump);
@@ -100,6 +175,7 @@ void init()
         &cli_commands::nvs_reset);
     CLI_ADD_CMD("nvs_test", "Test EEPROM readback, performs sequential number write and read, and does nvs_save afterwards",
         &cli_commands::nvs_test);
+
     CLI_ADD_CMD("get_coproc_err_rate", "Print coprocessor CRC error count since boot",
         &cli_commands::get_coproc_err_rate);
     CLI_ADD_CMD("get_coproc_init", "Prints whether coprocessor init-byte has been sent",

@@ -111,13 +111,13 @@ namespace coprocessor
         return crc_err_stats;
     }
 
-    uint32_t get_encoder_value(size_t i)
+    uint16_t get_encoder_value(size_t i)
     {
         assert_param(i < MAX_ENCODERS);
         assert_param(sync_mutex);
 
         ACQUIRE_MUTEX();
-        uint32_t ret = filled_buffer->encoder_pos[i];
+        uint16_t ret = filled_buffer->encoder_pos[i];
 
         RELEASE_MUTEX();
         return ret;

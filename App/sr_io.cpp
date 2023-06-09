@@ -84,6 +84,7 @@ namespace sr_io
     }   
     bool get_input(in i)
     {
+        assert_param(i < in::IN_LEN);
         return input_buffer[BIT_TO_WORD_IDX(i)] & BV(BIT_REMAINDER_IDX(i));
     }
     const sr_buf_t* get_inputs()
@@ -92,6 +93,7 @@ namespace sr_io
     }
     void set_output(out i, bool v)
     {
+        assert_param(i < out::OUT_LEN);
         if (v)
         {
             output_buffer[BIT_TO_WORD_IDX(i)] |= BV(BIT_REMAINDER_IDX(i));
@@ -104,6 +106,11 @@ namespace sr_io
     const sr_buf_t* get_outputs()
     {
         return output_buffer;
+    }
+    bool get_output(out i)
+    {
+        assert_param(i < out::OUT_LEN);
+        return output_buffer[BIT_TO_WORD_IDX(i)] & BV(BIT_REMAINDER_IDX(i));
     }
 
     HAL_StatusTypeDef write_display(const void* data, size_t len, uint32_t wait)
