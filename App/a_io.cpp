@@ -19,8 +19,8 @@ namespace a_io
         uint16_t vref;
         uint16_t vbat;
     };
-    a_buffer_t buffer[CHANNEL_REPETITION] = { };
-    uint16_t* mappings[in::LEN][CHANNEL_REPETITION] = { MAP(0), MAP(1), MAP(2), MAP(3) };
+    volatile a_buffer_t buffer[CHANNEL_REPETITION] = { };
+    volatile uint16_t* mappings[in::LEN][CHANNEL_REPETITION] = { MAP(0), MAP(1), MAP(2), MAP(3) };
     struct channel
     {
         average* a;
@@ -37,7 +37,7 @@ namespace a_io
         }
         //Here sizeof()-magic is not intended to compute array size, ignore the warning
         //[ instead it computes whole DMA buffer length in half-words ]
-        HAL_ADC_Start_DMA(&hadc1, reinterpret_cast<uint32_t*>(&buffer), sizeof(buffer) / sizeof(uint16_t));
+        HAL_ADC_Start_DMA(&hadc1, const_cast<uint32_t*>(reinterpret_cast<volatile uint32_t*>(&buffer)), sizeof(buffer) / sizeof(uint16_t));
         HAL_TIM_Base_Start(&htim2); //Start ADC trigger timer
     }
 

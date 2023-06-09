@@ -272,8 +272,10 @@ void supervize_manual_mode()
         TickType_t time = configINITIAL_TICK_COUNT;
         uint32_t last_pos = 0;
     };
-    const TickType_t max_edit_delay = pdMS_TO_TICKS(5000);
-    edit_t enable_edit[MY_PUMPS_NUM] = { };
+    static const TickType_t max_edit_delay = pdMS_TO_TICKS(5000);
+    static edit_t enable_edit[MY_PUMPS_NUM] = { };
+
+    if (!coprocessor::get_initialized()) return;
 
     TickType_t now = xTaskGetTickCount();
     for (size_t i = 0; i < MY_PUMPS_NUM; i++)

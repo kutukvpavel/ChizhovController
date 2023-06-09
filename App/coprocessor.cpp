@@ -4,11 +4,12 @@
 #include "wdt.h"
 #include "i2c_sync.h"
 #include "pumps.h"
+#include "crc.h"
 
 #define MAX_ENCODERS 3
 #define COPROCESSOR_ADDR 0x08
+#define COPROCESSOR_INIT_BYTE 0xA0
 #define PACKED_FOR_I2C __packed __aligned(sizeof(uint32_t))
-#define RETRIES 3
 
 #define ACQUIRE_MUTEX() while (xSemaphoreTake(sync_mutex, portMAX_DELAY) != pdTRUE)
 #define RELEASE_MUTEX() xSemaphoreGive(sync_mutex)
@@ -17,15 +18,21 @@ namespace coprocessor
 {
     struct PACKED_FOR_I2C memory_map_t
     {
-        uint32_t encoder_pos[MAX_ENCODERS];
-        uint8_t encoder_btn_pressed;
+        uint16_t encoder_pos[MAX_ENCODERS];
         uint16_t manual_override;
+        uint8_t encoder_btn_pressed;
         uint8_t drv_error_bitfield;
         uint8_t drv_missing_bitfield;
+        uint8_t crc;
     };
-    static memory_map_t buffer = {};
+    static volatile memory_map_t buffer1 = {};
+    static volatile memory_map_t buffer2 = {};
+    static volatile memory_map_t* filled_buffer = &buffer1;
+    static volatile memory_map_t* standby_buffer = &buffer2;
     static StaticSemaphore_t sync_mutex_buffer;
     static SemaphoreHandle_t sync_mutex = NULL;
+    static bool initialized = false;
+    static uint32_t crc_err_stats = 0;
 
     HAL_StatusTypeDef init()
     {
@@ -34,16 +41,60 @@ namespace coprocessor
         return sync_mutex ? HAL_OK : HAL_ERROR;
     }
 
+    uint8_t crc8_avr(uint8_t inCrc, uint8_t inData)
+    {
+        uint8_t data;
+        data = inCrc ^ inData;
+        for (size_t i = 0; i < 8; i++ )
+        {
+            if (( data & 0x80 ) != 0 )
+            {
+                data <<= 1;
+                data ^= 0x07;
+            }
+            else
+            {
+                data <<= 1;
+            }
+        }
+        return data;
+    }
     void sync()
     {
-        if (xSemaphoreTake(sync_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return;
+        if (i2c::read(COPROCESSOR_ADDR, reinterpret_cast<volatile uint8_t*>(standby_buffer), 
+            sizeof(memory_map_t)) != HAL_OK) return;
 
-        int retries = RETRIES;
-        while (retries--)
+        uint8_t crc = 0xFF;
+        // Calculate crc
+        for (size_t i = 0; i < (sizeof(memory_map_t) - 1); i++)
         {
-            if (i2c::read(COPROCESSOR_ADDR, reinterpret_cast<uint8_t*>(&buffer), sizeof(buffer)) == HAL_OK) break;
+            crc = crc8_avr(crc, reinterpret_cast<volatile uint8_t *>(standby_buffer)[i]);
         }
-        RELEASE_MUTEX();
+        if (crc == standby_buffer->crc)
+        {
+            // Actual write only affects coprocessor status LED
+            // This piece is mainly needed to prevent manual mode from fetching initial zero-initialized variables
+            // Before the very first read
+            if (!initialized) initialized = (i2c::write_byte(COPROCESSOR_ADDR, COPROCESSOR_INIT_BYTE) == HAL_OK);
+
+            if (xSemaphoreTake(sync_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return;
+            volatile memory_map_t *p = filled_buffer;
+            filled_buffer = standby_buffer;
+            standby_buffer = p;
+            RELEASE_MUTEX();
+        }
+        else
+        {
+            if (crc_err_stats < UINT32_MAX) crc_err_stats++;
+        }
+    }
+    bool get_initialized()
+    {
+        return initialized;
+    }
+    uint32_t get_crc_err_stats()
+    {
+        return crc_err_stats;
     }
 
     uint32_t get_encoder_value(size_t i)
@@ -52,7 +103,7 @@ namespace coprocessor
         assert_param(sync_mutex);
 
         ACQUIRE_MUTEX();
-        uint32_t ret = buffer.encoder_pos[i];
+        uint32_t ret = filled_buffer->encoder_pos[i];
 
         RELEASE_MUTEX();
         return ret;
@@ -65,7 +116,7 @@ namespace coprocessor
         assert_param(sync_mutex);
 
         ACQUIRE_MUTEX();
-        float res = buffer.manual_override / span;
+        float res = filled_buffer->manual_override / span;
         RELEASE_MUTEX();
         
         if (res > max) res = max;
@@ -78,8 +129,8 @@ namespace coprocessor
         assert_param(i < MAX_ENCODERS);
 
         ACQUIRE_MUTEX();
-        btn_double_buffer |= buffer.encoder_btn_pressed;
-        buffer.encoder_btn_pressed = 0;
+        btn_double_buffer |= filled_buffer->encoder_btn_pressed;
+        filled_buffer->encoder_btn_pressed = 0;
         uint8_t mask = (1u << i);
         bool ret = btn_double_buffer & mask;
         btn_double_buffer &= ~mask;
@@ -90,13 +141,13 @@ namespace coprocessor
     bool get_drv_error(size_t i)
     {
         assert_param(i < MY_PUMPS_NUM);
-        auto copy = buffer.drv_error_bitfield;
+        auto copy = filled_buffer->drv_error_bitfield;
         return (copy & (1u << i)) > 0;
     }
     bool get_drv_missing(size_t i)
     {
         assert_param(i < MY_PUMPS_NUM);
-        auto copy = buffer.drv_missing_bitfield;
+        auto copy = filled_buffer->drv_missing_bitfield;
         return (copy & (1u << i)) > 0;
     }
 } // namespace coprocessor
