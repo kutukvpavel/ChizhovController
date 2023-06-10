@@ -3,8 +3,11 @@
 #include "task_handles.h"
 #include "wdt.h"
 #include "spi_sync.h"
+#include "average/average.h"
 
 #include <math.h>
+
+#define AVERAGING 4 //pts
 
 namespace thermo
 {
@@ -24,18 +27,22 @@ namespace thermo
         }
     };
     static float temperatures[MY_TEMP_CHANNEL_NUM] = { NAN, NAN };
+    static uint16_t thermocouple_present_bitfield = 0;
+    static uint32_t receive_error_rate = 0;
+    average containers[MY_TEMP_CHANNEL_NUM] = { average(AVERAGING), average(AVERAGING) };
 
     static float get_celsius(const uint8_t* buffer)
     {
         const float max_temp = 1024.0f;
         const float resolution = 4096.0f;
 
-        uint16_t v = ((buffer[1] << 8) | buffer[0]) >> 3;
+        uint16_t v = ((buffer[0] << 8) | buffer[1]) >> 3;
         return v * (max_temp / resolution);
     }
 
     static void init()
     {
+        static_assert((sizeof(thermocouple_present_bitfield) * __CHAR_BIT__) >= MY_TEMP_CHANNEL_NUM);
         DBG("MAX6675 Init...");
 
         size_t i = 3;
@@ -81,11 +88,22 @@ namespace thermo
         for (size_t i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
         {
             if (!modules[i].present) continue;
-            if (spi::acquire_bus(modules[i].spi_index) != HAL_OK) continue;
+            if (spi::acquire_bus(modules[i].spi_index) != HAL_OK)
+            {
+                if (receive_error_rate < UINT32_MAX) receive_error_rate++;
+                continue;
+            }
             HAL_StatusTypeDef res = spi::receive(buffer, array_size(buffer)); //Given word length of 8 bits!
             spi::release_bus();
-            if (res != HAL_OK) continue;
-            temperatures[i] = get_celsius(buffer); //float r/w on ARM is atomic, no need for a mutex
+            if (res != HAL_OK) 
+            {
+                if (receive_error_rate < UINT32_MAX) receive_error_rate++;
+                continue;
+            }
+            containers[i].enqueue(get_celsius(buffer));
+            temperatures[i] = containers[i].get_average(); //float r/w on ARM is atomic, no need for a mutex
+            if (buffer[1] & (1u << 2)) thermocouple_present_bitfield &= ~(1u << i);
+            else thermocouple_present_bitfield |= (1u << i);
         }
     }
 
@@ -93,17 +111,29 @@ namespace thermo
     {
         return temperatures;
     }
+    const uint16_t* get_thermocouples_present()
+    {
+        return &thermocouple_present_bitfield;
+    }
+    bool get_thermocouple_present(size_t i)
+    {
+        return (thermocouple_present_bitfield & (1u << i)) > 0;
+    }
+    uint32_t get_recv_err_rate()
+    {
+        return receive_error_rate;
+    }
 } // namespace thermo
 
 _BEGIN_STD_C
 STATIC_TASK_BODY(MY_THERMO)
 {
-    const uint32_t delay = 50;
+    const uint32_t delay = 250;
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
     thermo::init();
-    pwdt = wdt::register_task(500, "max");
+    pwdt = wdt::register_task(1000, "max");
     INIT_NOTIFY(MY_THERMO);
     last_wake = xTaskGetTickCount();
     for (;;)

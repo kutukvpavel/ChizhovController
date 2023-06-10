@@ -46,12 +46,12 @@ namespace cli_commands
         fputs("\tSR_IO state:\n\t\tInputs = 0b", stdout);
         for (size_t i = 0; i < sr_io::in::IN_LEN; i++)
         {
-            putc(sr_io::get_input(i) ? '1' : '0', stdout);
+            putc(sr_io::get_input(static_cast<sr_io::in>(i)) ? '1' : '0', stdout);
         }
         fputs("\n\t\tOutputs = 0b", stdout);
         for (size_t i = 0; i < sr_io::out::OUT_LEN; i++)
         {
-            putc(sr_io::get_output(i) ? '1' : '0', stdout);
+            putc(sr_io::get_output(static_cast<sr_io::out>(i)) ? '1' : '0', stdout);
         }
         printf("\n\tA_IO state:\n"
             "\t\tAmbient = %f\n"
@@ -65,7 +65,7 @@ namespace cli_commands
         puts("\tMAX6675 Thermocouple state:");
         for (size_t i = 0; i < MY_TEMP_CHANNEL_NUM; i++)
         {
-            printf("\t\t#%u = %f\n", i, thermo::get_temperatures()[i]);
+            printf("\t\t#%u = %f, present = %u\n", i, thermo::get_temperatures()[i], thermo::get_thermocouple_present(i));
         }
         return 0;
     }
@@ -89,6 +89,7 @@ namespace cli_commands
                 pumps::get_load_fraction(i),
                 pumps::get_paused(i));
         }
+        return 0;
     }
     uint8_t coproc_report(int argc, char** argv)
     {
@@ -96,8 +97,8 @@ namespace cli_commands
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
         {
             printf("\tUnit #%u:\n"
-                "\t\tDrv missing: %u\n",
-                "\t\tDrv error: %u\n",
+                "\t\tDrv missing: %u\n"
+                "\t\tDrv error: %u\n"
                 "\t\tEncoder position = %u\n"
                 "\t\tEncoder btn pressed: %u\n",
                 i,
@@ -106,6 +107,7 @@ namespace cli_commands
                 coprocessor::get_encoder_value(i),
                 coprocessor::get_encoder_btn_pressed(i));
         }
+        return 0;
     }
 
     uint8_t nvs_save(int argc, char** argv)
@@ -154,6 +156,11 @@ namespace cli_commands
         }
         return 0;
     }
+    uint8_t get_thermo_err_rate(int argc, char** argv)
+    {
+        printf("\t%lu\n", thermo::get_recv_err_rate());
+        return 0;
+    }
 } // namespace cli_commands
 
 void init()
@@ -184,4 +191,6 @@ void init()
         &cli_commands::coproc_reinit);
     CLI_ADD_CMD("coproc_scan", "Scan I2C bus by trying to write to addresses from 0x08 to 0x7F. Prints only found devs or HAL_BUSY",
         &cli_commands::coproc_scan);
+
+    CLI_ADD_CMD("get_thermo_err_rate", "Get MAX6675 SPI RX error count since boot", &cli_commands::get_thermo_err_rate);
 }
