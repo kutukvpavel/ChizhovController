@@ -37,11 +37,17 @@ namespace pumps
 
     void switch_hw_interlock()
     {
-        const sr_io::out motor_enable_interlock = sr_io::out::OC0;
+        static const sr_io::out motor_enable_interlock = sr_io::out::OC5;
 
         sr_io::set_output(motor_enable_interlock, true);
         vTaskDelay(pdMS_TO_TICKS(100));
         sr_io::set_output(motor_enable_interlock, false);
+    }
+    bool get_hw_interlock_ok()
+    {
+        static const sr_io::in motor_power_sense = sr_io::in::IN0;
+
+        return sr_io::get_input(motor_power_sense);
     }
     void set_enable(bool v)
     {

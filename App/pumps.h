@@ -23,6 +23,7 @@ namespace pumps
     void set_enable(bool v);
     bool get_enabled();
     void switch_hw_interlock();
+    bool get_hw_interlock_ok();
 
     float get_indicated_speed(size_t i);
     void set_indicated_speed(size_t i, float v);

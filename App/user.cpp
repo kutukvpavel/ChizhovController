@@ -245,7 +245,7 @@ void app_main(wdt::task_t* pwdt)
         HAL_NVIC_SystemReset();
         break;
     }
-    if (!front_panel::get_button(front_panel::b_emergency)) state = states::emergency;
+    if ((!pumps::get_hw_interlock_ok()) && (state != states::init) && (state != states::lamp_test)) state = states::emergency;
     pumps::set_enable(state == states::automatic || state == states::manual);
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));

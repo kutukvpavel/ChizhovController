@@ -6,21 +6,20 @@ namespace front_panel
 {
     enum lights : size_t
     {
-        l_start = 0,
+        l_emergency = 0,
         l_stop,
+        l_start,
         l_automatic_mode,
         l_manual_override,
-        l_emergency,
 
         L_LEN
     };
     enum buttons : size_t
     {
-        b_emergency = 0,
+        b_light_test = 0,
         b_start,
         b_stop,
         b_pause,
-        b_light_test,
 
         B_LEN
     };

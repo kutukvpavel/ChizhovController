@@ -101,9 +101,16 @@ namespace thermo
                 continue;
             }
             containers[i].enqueue(get_celsius(buffer));
-            temperatures[i] = containers[i].get_average(); //float r/w on ARM is atomic, no need for a mutex
-            if (buffer[1] & (1u << 2)) thermocouple_present_bitfield &= ~(1u << i);
-            else thermocouple_present_bitfield |= (1u << i);
+            if (buffer[1] & (1u << 2)) 
+            {
+                thermocouple_present_bitfield &= ~(1u << i); //Remove present bit first
+                temperatures[i] = NAN; //Set NAN second
+            }
+            else  
+            {
+                temperatures[i] = containers[i].get_average(); //float r/w on ARM is atomic, no need for a mutex
+                thermocouple_present_bitfield |= (1u << i);
+            }
         }
     }
 

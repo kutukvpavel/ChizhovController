@@ -9,24 +9,23 @@
 namespace front_panel
 {
     static const sr_io::out lights_mapping[lights::L_LEN] = {
+        sr_io::out::OC0,
         sr_io::out::OC1,
         sr_io::out::OC2,
         sr_io::out::OC3,
-        sr_io::out::OC4,
-        sr_io::out::OC5
+        sr_io::out::OC4
     };
     static const sr_io::in buttons_mapping[buttons::B_LEN] = {
-        sr_io::in::IN4,
-        sr_io::in::IN5,
-        sr_io::in::IN6,
-        sr_io::in::IN7,
-        sr_io::in::IN8,
-    };
-    static const sr_io::in pause_btn_mapping[MY_PUMPS_MAX] = {
-        sr_io::in::IN0,
         sr_io::in::IN1,
         sr_io::in::IN2,
-        sr_io::in::IN3
+        sr_io::in::IN3,
+        sr_io::in::IN5 //First element of pause_btn_mapping to ensure semantic consistency
+    };
+    static const sr_io::in pause_btn_mapping[MY_PUMPS_MAX] = {
+        sr_io::in::IN5,
+        sr_io::in::IN7,
+        sr_io::in::IN9,
+        sr_io::in::IN11
     };
 
     static bool blink_enable[lights::L_LEN] = { 0 };
