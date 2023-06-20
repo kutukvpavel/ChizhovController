@@ -18,7 +18,7 @@ namespace front_panel
     static const sr_io::in buttons_mapping[buttons::B_LEN] = {
         sr_io::in::IN1,
         sr_io::in::IN2,
-        sr_io::in::IN3,
+        sr_io::in::IN3, //This one is NC (inverted in SR_IO)
         sr_io::in::IN5 //First element of pause_btn_mapping to ensure semantic consistency
     };
     static const sr_io::in pause_btn_mapping[MY_PUMPS_MAX] = {

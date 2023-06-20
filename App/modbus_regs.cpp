@@ -163,6 +163,12 @@ namespace mb_regs
 
     HAL_StatusTypeDef sync()
     {
+        /**
+         * Output registers are overwritten on every sync
+         * Input registers only matter if interface activity bit is set for corresponding modbus instance
+         * The sync is protected with a mutex, as well as internal modbus instance operations
+        */
+
         size_t i;
         for (i = 0; i < array_size(instances); i++)
         {

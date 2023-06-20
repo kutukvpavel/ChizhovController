@@ -4,6 +4,7 @@
 #include "compat_api.h"
 #include "task_handles.h"
 #include "wdt.h"
+#include "nvs.h"
 
 #define BIT_TO_WORD_IDX(b) ((b) / BUF_WORD_BITS)
 #define BIT_REMAINDER_IDX(b) ((b) % BUF_WORD_BITS) 
@@ -78,10 +79,21 @@ namespace sr_io
             }
             gpio_positive_pulse_pin(IN_SH_GPIO_Port, IN_SH_Pin);
         }
-
+        //Handle input inversion
+        sr_buf_t* inv = nvs::get_input_inversion();
+        for (size_t i = 0; i < input_buffer_len; i++)
+        {
+            input_buffer[i] ^= inv[i];
+        }
+        
         RELEASE_MUTEX();
         return HAL_OK;
-    }   
+    }
+
+    void set_invert_input(in i)
+    {
+
+    }
     bool get_input(in i)
     {
         assert_param(i < in::IN_LEN);

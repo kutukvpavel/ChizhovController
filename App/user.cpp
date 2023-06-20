@@ -92,7 +92,6 @@ void StartMainTask(void *argument)
     
     HAL_IWDG_Refresh(&hiwdg);
     vTaskDelay(pdMS_TO_TICKS(100));
-    //while (1) vTaskDelay(10);
 
     pwdt = wdt::register_task(2000, "main");
     last_wake = xTaskGetTickCount();

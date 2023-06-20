@@ -161,6 +161,52 @@ namespace cli_commands
         printf("\t%lu\n", thermo::get_recv_err_rate());
         return 0;
     }
+
+    void print_input_invert()
+    {
+        sr_buf_t* inv = nvs::get_input_inversion();
+        for (size_t i = 0; i < sr_io::input_buffer_len; i++)
+        {
+            printf("\tWord #%u = 0x%X = 0b", i, inv[i]);
+            for (size_t j = 0; j < (sizeof(sr_buf_t) * __CHAR_BIT__); j++)
+            {
+                putc((inv[i] & (1u << j)) ? '1' : '0', stdout);   
+            }
+            putc('\n', stdout);
+        }
+    }
+    uint8_t input_invert(int argc, char** argv)
+    {
+        if (argc < 2)
+        {
+            print_input_invert();
+            return 0;
+        }
+        
+        sr_buf_t* inv = nvs::get_input_inversion();
+        if (argc == 2)
+        {
+            size_t idx;
+            if (sscanf(argv[1], "%u", &idx) != 1) return 2;
+            *inv ^= (1u << idx);
+        }
+        else if (argc == (sr_io::input_buffer_len + 1))
+        {
+            sr_buf_t b[sr_io::input_buffer_len];
+            for (size_t i = 0; i < sr_io::input_buffer_len; i++)
+            {
+                if (sscanf(argv[i + 1], "%hx", &(b[i])) != 1) return 2;
+            }
+            memcpy(inv, b, sizeof(b));
+        }
+        else
+        {
+            return 1;
+        }
+
+        print_input_invert();
+        return 0;
+    }
 } // namespace cli_commands
 
 void init()
@@ -193,4 +239,9 @@ void init()
         &cli_commands::coproc_scan);
 
     CLI_ADD_CMD("get_thermo_err_rate", "Get MAX6675 SPI RX error count since boot", &cli_commands::get_thermo_err_rate);
+
+    CLI_ADD_CMD("input_invert", "Get/set SR_IO input inversion register. No args = print current, "
+        "1 arg = index of the input to toggle inversion bit for, "
+        "N>2 args = N inv register words in hex without 0x (number of words is printed with no args given)",
+        &cli_commands::input_invert);
 }

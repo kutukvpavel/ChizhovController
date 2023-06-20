@@ -1,6 +1,7 @@
 #include "nvs.h"
 
 #include "i2c_sync.h"
+#include "sr_io.h"
 
 #define MY_EEPROM_ADDR 0xA0
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
@@ -21,6 +22,7 @@ namespace nvs
         motor_params_t motor_params[MY_PUMPS_MAX];
         motor_reg_t motor_regs[MY_PUMPS_MAX];
         uint16_t modbus_id;
+        sr_buf_t input_invert[sr_io::input_buffer_len];
     };
     static storage_t storage = {
         .pump_params = {
@@ -72,7 +74,8 @@ namespace nvs
                 .err = 0
             }
         },
-        .modbus_id = 1
+        .modbus_id = 1,
+        .input_invert = { (1u << sr_io::in::IN3) } //Invert Stop button (NC)
     };
 
     static uint8_t nvs_ver = 0;
@@ -199,5 +202,9 @@ namespace nvs
     uint16_t* get_modbus_addr()
     {
         return &(storage.modbus_id);
+    }
+    sr_buf_t* get_input_inversion()
+    {
+        return storage.input_invert;
     }
 } // namespace nvs
