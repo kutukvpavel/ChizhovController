@@ -126,8 +126,18 @@ void supervize_manual_mode();
 
 void app_main(wdt::task_t* pwdt)
 {
+    static const char* state_names[] = {
+        "INIT",
+        "MANUAL",
+        "AUTO",
+        "EMERGENCY",
+        "LAMP_TEST"
+    };
     static led_states led = led_states::INIT;
     static states state = states::init;
+    static states prev_state = states::init;
+
+    static_assert(array_size(state_names) >= (static_cast<uint16_t>(states::lamp_test) + 1));
 
     /***
      * The following stuff is handled in separate tasks:
@@ -146,6 +156,13 @@ void app_main(wdt::task_t* pwdt)
      *  State machine
     */
 
+    if (prev_state != state)
+    {
+        size_t idx = static_cast<uint16_t>(state);
+        DBG("State = #%u = %s", idx, state_names[idx]);
+        prev_state = state;
+    }
+
     switch (state)
     {
     case states::init:
@@ -154,7 +171,6 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
         if (front_panel::get_button(front_panel::b_start))
         {
-            DBG("State: manual");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_start);
             pumps::switch_hw_interlock();
@@ -162,7 +178,6 @@ void app_main(wdt::task_t* pwdt)
         }
         if (front_panel::get_button(front_panel::b_light_test))
         {
-            DBG("State: lamp test");
             front_panel::clear_lights();
             //WAIT_ON_BTN(front_panel::b_light_test);
             state = states::lamp_test;
@@ -175,14 +190,12 @@ void app_main(wdt::task_t* pwdt)
         supervize_manual_mode();
         if (front_panel::get_button(front_panel::b_start))
         {
-            DBG("State: auto");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_start);
             state = states::automatic;
         }
         if (front_panel::get_button(front_panel::b_stop))
         {
-            DBG("State: init");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
             state = states::init;
@@ -195,7 +208,6 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::on);
         if (front_panel::get_button(front_panel::b_stop))
         {
-            DBG("State: manual");
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
             state = states::manual;
@@ -208,8 +220,8 @@ void app_main(wdt::task_t* pwdt)
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::blink);
         if (front_panel::get_button(front_panel::b_stop))
         {
-            DBG("State: init");
             front_panel::clear_lights();
+            WAIT_ON_BTN(front_panel::b_stop);
             state = states::init;
         }
         break;
@@ -226,14 +238,11 @@ void app_main(wdt::task_t* pwdt)
             front_panel::clear_lights();
             //WAIT_ON_BTN(front_panel::b_light_test);
             mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
-            if (mode == display::test_modes::none)
-            {
-                DBG("State: init");
-                display::set_lamp_test_mode(display::test_modes::none);
-                mode = display::test_modes::all_lit;
-                state = states::init;
-            }
+            if (mode == display::test_modes::none) mode = display::test_modes::all_lit;
+            display::set_lamp_test_mode(display::test_modes::none);
+            DBG("Next LT mode = #%u", mode);
             vTaskDelay(pdMS_TO_TICKS(50));
+            state = states::init;
         }
         break;
     }
@@ -244,19 +253,22 @@ void app_main(wdt::task_t* pwdt)
         HAL_NVIC_SystemReset();
         break;
     }
-    if ((!pumps::get_hw_interlock_ok()) && (state != states::init) && (state != states::lamp_test)) state = states::emergency;
+    if ((!pumps::get_hw_interlock_ok()) && (state != states::init) && (state != states::lamp_test)) 
+    {
+        state = states::emergency;
+    }
     pumps::set_enable(state == states::automatic || state == states::manual);
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));
 
-    supervize_fp(state);
+    if (state != states::lamp_test) supervize_fp(state);
     supervize_led(led);
 }
 
 void supervize_fp(states s)
 {
     front_panel::set_light(front_panel::l_manual_override, 
-        (coprocessor::get_manual_override() < 0.999f) ? front_panel::l_state::blink : front_panel::l_state::off);
+        (coprocessor::get_manual_override() < 0.999f) ? front_panel::l_state::on : front_panel::l_state::off);
     for (size_t i = 0; i < MY_PUMPS_NUM; i++)
     {
         pumps::set_paused(i, front_panel::get_button(front_panel::b_pause, i));
@@ -302,8 +314,8 @@ void supervize_led(led_states s)
     };
 
     const uint32_t heartbeat_delay_ms = 1000;
-    const uint32_t comm_delay_ms = 100;
-    const uint32_t comm_repetitions = 5;
+    const uint32_t comm_delay_ms = 200;
+    const uint32_t comm_repetitions = 3;
 
     static TickType_t next_toggle = 0;
     static substates substate = substates::off;

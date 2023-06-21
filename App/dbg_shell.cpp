@@ -43,15 +43,17 @@ namespace cli_commands
     }
     uint8_t peripherals_report(int argc, char** argv)
     {
-        fputs("\tSR_IO state:\n\t\tInputs = 0b", stdout);
+        fputs("\tSR_IO state:\n\t\tInputs = 0b ", stdout);
         for (size_t i = 0; i < sr_io::in::IN_LEN; i++)
         {
-            putc(sr_io::get_input(static_cast<sr_io::in>(i)) ? '1' : '0', stdout);
+            putc(sr_io::get_input(static_cast<sr_io::in>(sr_io::in::IN_LEN - i - 1)) ? '1' : '0', stdout);
+            if (i % 8 == 7) putc(' ', stdout);
         }
-        fputs("\n\t\tOutputs = 0b", stdout);
+        fputs("\n\t\tOutputs = 0b ", stdout);
         for (size_t i = 0; i < sr_io::out::OUT_LEN; i++)
         {
-            putc(sr_io::get_output(static_cast<sr_io::out>(i)) ? '1' : '0', stdout);
+            putc(sr_io::get_output(static_cast<sr_io::out>(sr_io::out::OUT_LEN - i - 1)) ? '1' : '0', stdout);
+            if (i % 8 == 7) putc(' ', stdout);
         }
         printf("\n\tA_IO state:\n"
             "\t\tAmbient = %f\n"
@@ -167,10 +169,11 @@ namespace cli_commands
         sr_buf_t* inv = nvs::get_input_inversion();
         for (size_t i = 0; i < sr_io::input_buffer_len; i++)
         {
-            printf("\tWord #%u = 0x%X = 0b", i, inv[i]);
+            printf("\tWord #%u = 0x%X = 0b ", i, inv[i]);
             for (size_t j = 0; j < (sizeof(sr_buf_t) * __CHAR_BIT__); j++)
             {
-                putc((inv[i] & (1u << j)) ? '1' : '0', stdout);   
+                putc((inv[i] & (1u << (sizeof(sr_buf_t) * __CHAR_BIT__ - j - 1))) ? '1' : '0', stdout);
+                if (j % 8 == 7) putc(' ', stdout);
             }
             putc('\n', stdout);
         }

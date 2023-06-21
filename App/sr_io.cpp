@@ -90,10 +90,6 @@ namespace sr_io
         return HAL_OK;
     }
 
-    void set_invert_input(in i)
-    {
-
-    }
     bool get_input(in i)
     {
         assert_param(i < in::IN_LEN);
@@ -135,7 +131,8 @@ namespace sr_io
             for (size_t j = 0; j < __CHAR_BIT__; j++)
             {
                 HAL_GPIO_WritePin(SR_D_GPIO_Port, SR_D_Pin,
-                    (reinterpret_cast<const uint8_t*>(data)[i] & BV(j)) ? GPIO_PIN_SET : GPIO_PIN_RESET);
+                    (reinterpret_cast<const uint8_t*>(data)[len - i - 1] & BV(__CHAR_BIT__ - j - 1)) ? 
+                        GPIO_PIN_SET : GPIO_PIN_RESET);
                 compat::uDelay(1);
                 gpio_positive_pulse_pin(DISP_SH_GPIO_Port, DISP_SH_Pin);
             }

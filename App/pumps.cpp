@@ -40,7 +40,7 @@ namespace pumps
         static const sr_io::out motor_enable_interlock = sr_io::out::OC5;
 
         sr_io::set_output(motor_enable_interlock, true);
-        vTaskDelay(pdMS_TO_TICKS(100));
+        vTaskDelay(pdMS_TO_TICKS(150));
         sr_io::set_output(motor_enable_interlock, false);
     }
     bool get_hw_interlock_ok()

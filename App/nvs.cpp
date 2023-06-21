@@ -26,7 +26,7 @@ namespace nvs
     };
     static storage_t storage = {
         .pump_params = {
-            .invert_enable = 1
+            .invert_enable = 0
         },
         .motor_params = {
             {
@@ -75,7 +75,7 @@ namespace nvs
             }
         },
         .modbus_id = 1,
-        .input_invert = { (1u << sr_io::in::IN3) } //Invert Stop button (NC)
+        .input_invert = { (1u << sr_io::in::IN2) } //Invert Stop button (NC)
     };
 
     static uint8_t nvs_ver = 0;

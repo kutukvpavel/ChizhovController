@@ -17,8 +17,8 @@ namespace front_panel
     enum buttons : size_t
     {
         b_light_test = 0,
-        b_start,
         b_stop,
+        b_start,
         b_pause,
 
         B_LEN

@@ -95,7 +95,7 @@ namespace display
         static char temp[DIGITS_PER_CHANNEL + 2]; //+ decimal point and a null character
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
-        test_modes m = mode;
+        test_modes m = mode; //double-buffer this var
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
             auto& b = buffer[i];
@@ -103,7 +103,7 @@ namespace display
             {
             case test_modes::all_lit:
                 memset(&(b.digits), 0, sizeof(b.digits));
-                memset(&(b.leds), 1, sizeof(b.leds));
+                memset(&(b.leds), 0xFF, sizeof(b.leds));
                 break;
             case test_modes::digits:
             {
