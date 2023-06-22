@@ -11,6 +11,7 @@
 #include "a_io.h"
 #include "pumps.h"
 #include "thermo.h"
+#include "interop.h"
 
 static void init();
 
@@ -210,6 +211,20 @@ namespace cli_commands
         print_input_invert();
         return 0;
     }
+
+    uint8_t lamp_test(int argc, char** argv)
+    {
+        static uint8_t pattern;
+        uint16_t buf;
+
+        if (argc < 2) return 1;
+        if (sscanf(argv[1], "%hx", &buf) != 1) return 2;
+        pattern = static_cast<uint8_t>(buf & 0xFF);
+        printf("\tInitialing lamp test interop with pattern = 0x%hX\n", pattern);
+        HAL_StatusTypeDef ret = interop::enqueue(interop::cmds::lamp_test_dbg, &pattern);
+        if (ret == HAL_OK) return 0;
+        return ret + 2;
+    }
 } // namespace cli_commands
 
 void init()
@@ -247,4 +262,6 @@ void init()
         "1 arg = index of the input to toggle inversion bit for, "
         "N>2 args = N inv register words in hex without 0x (number of words is printed with no args given)",
         &cli_commands::input_invert);
+
+    CLI_ADD_CMD("lamp_test", "Invoke display lamp test interop. Expects 1 arg: byte pattern.", &cli_commands::lamp_test);
 }

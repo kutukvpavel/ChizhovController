@@ -14,6 +14,7 @@
 #include "front_panel.h"
 #include "coprocessor.h"
 #include "../USB_DEVICE/App/usb_device.h"
+#include "interop.h"
 
 #define DEFINE_STATIC_TASK(name, stack_size) \
     StaticTask_t task_buffer_##name; \
@@ -56,6 +57,7 @@ void StartMainTask(void *argument)
 
     handle = xTaskGetCurrentTaskHandle();
     assert_param(handle);
+    interop::init();
 
     START_STATIC_TASK(MY_CLI, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
@@ -253,8 +255,9 @@ void app_main(wdt::task_t* pwdt)
         HAL_NVIC_SystemReset();
         break;
     }
-    if ((!pumps::get_hw_interlock_ok()) && (state != states::init) && (state != states::lamp_test)) 
+    if ((!pumps::get_hw_interlock_ok()) && (state != states::init) && (state != states::lamp_test) && (state != states::emergency)) 
     {
+        front_panel::clear_lights();
         state = states::emergency;
     }
     pumps::set_enable(state == states::automatic || state == states::manual);

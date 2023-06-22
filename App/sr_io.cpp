@@ -133,11 +133,11 @@ namespace sr_io
                 HAL_GPIO_WritePin(SR_D_GPIO_Port, SR_D_Pin,
                     (reinterpret_cast<const uint8_t*>(data)[len - i - 1] & BV(__CHAR_BIT__ - j - 1)) ? 
                         GPIO_PIN_SET : GPIO_PIN_RESET);
-                compat::uDelay(1);
-                gpio_positive_pulse_pin(DISP_SH_GPIO_Port, DISP_SH_Pin);
+                compat::uDelay(2);
+                gpio_positive_pulse_pin(DISP_SH_GPIO_Port, DISP_SH_Pin, 2);
             }
         }
-        gpio_positive_pulse_pin(DISP_ST_GPIO_Port, DISP_ST_Pin);
+        gpio_positive_pulse_pin(DISP_ST_GPIO_Port, DISP_ST_Pin, 2);
 
         RELEASE_MUTEX();
         return HAL_OK;

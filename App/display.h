@@ -7,6 +7,8 @@ namespace display
         none,
         all_lit,
         digits,
+        all_high,
+        all_low,
 
         TST_LEN
     };

@@ -119,6 +119,7 @@ App/dbg_shell.cpp \
 App/display.cpp \
 App/front_panel.cpp \
 App/i2c_sync.cpp \
+App/interop.cpp \
 App/modbus_regs.cpp \
 App/motor.cpp \
 App/nvs.cpp \

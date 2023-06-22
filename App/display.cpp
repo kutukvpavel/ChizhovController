@@ -5,6 +5,7 @@
 #include "pumps.h"
 #include "task_handles.h"
 #include "wdt.h"
+#include "interop.h"
 
 #include <string.h>
 
@@ -12,6 +13,23 @@
 #define MISSED_REPAINT_DELAY_MS 3
 #define DISPLAY_CHANNELS 3
 #define DIGITS_PER_CHANNEL 4
+
+#ifndef BV
+ #define BV(i) (1u << (i))
+#endif
+#define GENERATE_DIGIT_TABLE(prefix) { \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _E) | BV(prefix ## _F), \
+            BV(prefix ## _B) | BV(prefix ## _C), \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _D) | BV(prefix ## _E) | BV(prefix ## _G), \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _G), \
+            BV(prefix ## _B) | BV(prefix ## _C) | BV(prefix ## _F) | BV(prefix ## _G), \
+            BV(prefix ## _A) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _F) | BV(prefix ## _G), \
+            BV(prefix ## _A) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _E) | BV(prefix ## _F) | BV(prefix ## _G), \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _C), \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _E) | BV(prefix ## _F) | BV(prefix ## _G), \
+            BV(prefix ## _A) | BV(prefix ## _B) | BV(prefix ## _C) | BV(prefix ## _D) | BV(prefix ## _F) | BV(prefix ## _G) }
+#define ODD
+#define EVEN
 
 namespace display
 {
@@ -46,20 +64,40 @@ namespace display
     }
     void convert_to_7seg(void* dest, const char* src)
     {
-        const uint8_t digits[] = {
-            0b11111100,
-            0b01100000,
-            0b11011010,
-            0b11110010,
-            0b01100110,
-            0b10110110,
-            0b10111110,
-            0b11100000,
-            0b11111110,
-            0b11100110
+        enum odd_digit_bits
+        {
+            ODD_DP,
+            ODD_C,
+            ODD_D,
+            ODD_E,
+            ODD_F,
+            ODD_G,
+            ODD_A,
+            ODD_B,
+
+            ODD_LEN
         };
-        const uint8_t point = 0x01;
-        static_assert(array_size(digits) >= ('9' - '0'));
+        enum even_digit_bits
+        {
+            EVEN_DP,
+            EVEN_C,
+            EVEN_G,
+            EVEN_D,
+            EVEN_E,
+            EVEN_F,
+            EVEN_A,
+            EVEN_B,
+
+            EVEN_LEN
+        };
+        static_assert(ODD_LEN == 8);
+        static_assert(EVEN_LEN == 8);
+
+        static const uint8_t odd_digits[] = GENERATE_DIGIT_TABLE(ODD);
+        static const uint8_t even_digits[] = GENERATE_DIGIT_TABLE(EVEN);
+        static const uint8_t point = 0x01;
+        static_assert(array_size(odd_digits) >= ('9' - '0'));
+        static_assert(array_size(even_digits) >= ('9' - '0'));
 
         auto d = reinterpret_cast<uint8_t*>(dest);
         size_t shift = 0;
@@ -70,7 +108,7 @@ namespace display
                 shift++;
                 d[i - 1] |= point;
             }
-            d[i] = ~digits[src[i + shift] - '0'];
+            d[i] = ~((i % 2 == 0) ? odd_digits : even_digits)[src[i + shift] - '0']; //Not a mistake, even/odd meant counting from 1
         }
     }
     uint16_t convert_to_leds(float speed_fraction, float load_fraction)
@@ -93,9 +131,39 @@ namespace display
     void compose()
     {
         static char temp[DIGITS_PER_CHANNEL + 2]; //+ decimal point and a null character
+        static bool interop_running = false;
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
         test_modes m = mode; //double-buffer this var
+        if (m == test_modes::none)
+        {
+            static uint8_t byte_pattern;
+            const uint8_t* p;
+            bool have_new_interop = 
+                (interop::try_receive(interop::cmds::lamp_test_dbg, reinterpret_cast<const void**>(&p)) == HAL_OK);
+            if (have_new_interop) 
+            {
+                assert_param(p);
+                byte_pattern = *p;
+                DBG("Lamp test interop initiated: pattern = 0x%hX", byte_pattern);
+                interop_running = true;
+            }
+            if (interop_running)
+            {
+                for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
+                {
+                    auto& b = buffer[i];
+                    memset(&(b.digits), byte_pattern, sizeof(b.digits));
+                    memset(&(b.leds), byte_pattern, sizeof(b.leds));
+                }
+                return;
+            }
+        }
+        else
+        {
+            interop_running = false;
+        }
+
         for (size_t i = 0; i < DISPLAY_CHANNELS; i++)
         {
             auto& b = buffer[i];
@@ -114,6 +182,14 @@ namespace display
                 b.leds[1] = bits & 0xFF;
                 break;
             }
+            case test_modes::all_high:
+                memset(&(b.digits), 0xFF, sizeof(b.digits));
+                memset(&(b.leds), 0xFF, sizeof(b.leds));
+                break;
+            case test_modes::all_low:
+                memset(&(b.digits), 0, sizeof(b.digits));
+                memset(&(b.leds), 0, sizeof(b.leds));
+                break;
             default:
             {
                 if (pumps::get_missing(i))
