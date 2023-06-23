@@ -153,20 +153,20 @@ namespace cli_commands
     }
     uint8_t nvs_report(int argc, char** argv)
     {
-        prints(
+        printf(
             "\tNVS ver: stored = %hu, required = %hu; %s.\n",
             nvs::get_stored_version(),
             nvs::get_required_version(),
             nvs::get_version_match() ? "MATCH" : "DEFAULTS USED!"
         );
         print_input_invert();
-        printf("\tModbus address = %u\n", nvs::get_modbus_addr());
+        printf("\tModbus address = %u\n", *nvs::get_modbus_addr());
         auto motor_params = nvs::get_motor_params();
         auto pump_params = nvs::get_pump_params();
         auto motor_regs = nvs::get_motor_regs();
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
         {
-            printf("\tMotor #%u params:\n");
+            printf("\tMotor #%u params:\n", i);
             auto& mp = motor_params[i];
             printf(
                 "\t\tVol.rate-to-RPS coef = %f\n"
@@ -182,7 +182,7 @@ namespace cli_commands
                 mp.max_rate_rps,
                 mp.max_load_err
             );
-            printf("\tMotor #%u regs:\n");
+            printf("\tMotor #%u regs:\n", i);
             auto& mr = motor_regs[i];
             printf(
                 "\t\tVol.rate = %f\n"
@@ -194,7 +194,7 @@ namespace cli_commands
                 mr.err,
                 mr.status
             );
-            printf("\tPump #%u params:\n");
+            printf("\tPump #%u params:\n", i);
             auto& pp = pump_params[i];
             printf(
                 "\t\tInvert EN = %u\n"
