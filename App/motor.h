@@ -47,7 +47,8 @@ public:
 
     void reload_params();
 
-    void set_volume_rate(float v);
+    float get_volume_rate_limit();
+    HAL_StatusTypeDef set_volume_rate(float v);
     float get_volume_rate();
     float get_speed_fraction();
     void set_load_err(float v);

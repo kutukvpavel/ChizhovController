@@ -26,7 +26,8 @@ namespace nvs
     };
     static storage_t storage = {
         .pump_params = {
-            .invert_enable = 0
+            .invert_enable = 0,
+            .volume_rate_resolution = 0.01
         },
         .motor_params = {
             {

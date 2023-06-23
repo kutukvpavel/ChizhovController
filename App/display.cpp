@@ -8,6 +8,7 @@
 #include "interop.h"
 
 #include <string.h>
+#include <math.h>
 
 #define REGULAR_REPAINT_DELAY_MS 50
 #define MISSED_REPAINT_DELAY_MS 3
@@ -52,15 +53,11 @@ namespace display
     uint8_t get_fraction_bits(float v, size_t total_bits)
     {
         assert_param(total_bits <= 8);
+        if (v <= __FLT_EPSILON__) return 0;
 
-        uint8_t res = 0;
-        float resolution = 1.0f / total_bits;
-        for (size_t i = 0; i < total_bits; i++)
-        {
-            if (v < (i * resolution)) break;
-            res |= (1u << i);
-        }
-        return res;
+        size_t n = static_cast<size_t>(roundf(v * total_bits));
+        if (n > total_bits) n = total_bits;
+        return static_cast<uint8_t>(static_cast<uint16_t>(1u << n) - 1) | 0x01;
     }
     void convert_to_7seg(void* dest, const char* src)
     {
@@ -149,7 +146,7 @@ namespace display
 
     void compose()
     {
-        static char temp[DIGITS_PER_CHANNEL + 2]; //+ decimal point and a null character
+        static char temp[DIGITS_PER_CHANNEL + 3]; //+ decimal point and a null character
         static bool interop_running = false;
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
@@ -217,7 +214,7 @@ namespace display
                     memset(&(b.leds), 0, sizeof(b.leds));
                     continue;
                 }
-                snprintf(temp, DIGITS_PER_CHANNEL + 1, "%5f", pumps::get_indicated_speed(i));
+                snprintf(temp, DIGITS_PER_CHANNEL + 2, "%5f", pumps::get_indicated_speed(i));
                 convert_to_7seg(&(b.digits), temp);
                 uint16_t bits = convert_to_leds(pumps::get_speed_fraction(i), pumps::get_load_fraction(i));
                 if (pumps::get_overload(i)) bits |= (1u << leds::overload);

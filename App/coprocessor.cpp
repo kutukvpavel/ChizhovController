@@ -6,6 +6,8 @@
 #include "pumps.h"
 #include "crc.h"
 
+#include <math.h>
+
 #define MAX_ENCODERS 3
 #define COPROCESSOR_ADDR (0x08 << 1u)
 #define COPROCESSOR_INIT_BYTE 0xA0
@@ -120,7 +122,7 @@ namespace coprocessor
         uint16_t ret = filled_buffer->encoder_pos[i];
 
         RELEASE_MUTEX();
-        return ret;
+        return __UINT16_MAX__ - ret; //Invert to get clockwise = +
     }
     float get_manual_override()
     {

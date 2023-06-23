@@ -124,7 +124,7 @@ enum class states : uint16_t
 
 void supervize_led(led_states s);
 void supervize_fp(states s); //State-independent FP elements
-void supervize_manual_mode();
+void supervize_manual_edit();
 
 void app_main(wdt::task_t* pwdt)
 {
@@ -171,6 +171,7 @@ void app_main(wdt::task_t* pwdt)
         led = led_states::INIT;
         //Here we wait until the user pushes start button
         front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
+        supervize_manual_edit(); //Allow to pre-set motor speed before turning on
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
@@ -189,7 +190,7 @@ void app_main(wdt::task_t* pwdt)
     case states::manual:
         led = led_states::HEARTBEAT;
         front_panel::set_light(front_panel::l_start, front_panel::l_state::on);
-        supervize_manual_mode();
+        supervize_manual_edit();
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
@@ -260,9 +261,10 @@ void app_main(wdt::task_t* pwdt)
         front_panel::clear_lights();
         state = states::emergency;
     }
-    pumps::set_enable(state == states::automatic || state == states::manual);
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));
+    pumps::set_enable(state == states::automatic || state == states::manual);
+    pumps::update_manual_override();
 
     if (state != states::lamp_test) supervize_fp(state);
     supervize_led(led);
@@ -278,13 +280,13 @@ void supervize_fp(states s)
     }
 }
 
-void supervize_manual_mode()
+void supervize_manual_edit()
 {
     struct edit_t
     {
         bool enable = false;
         TickType_t time = configINITIAL_TICK_COUNT;
-        uint32_t last_pos = 0;
+        uint16_t last_pos = 0;
     };
     static const TickType_t max_edit_delay = pdMS_TO_TICKS(4000);
     static edit_t enable_edit[MY_PUMPS_NUM] = { };
@@ -299,15 +301,23 @@ void supervize_manual_mode()
         {
             e.enable = !e.enable;
             e.time = now;
+            e.last_pos = coprocessor::get_encoder_value(i);
             DBG("Man edit #%u en = %u", i, e.enable);
         }
         if (e.enable && ((now - e.time) > max_edit_delay)) e.enable = false;
         if (!e.enable) continue;
-        uint32_t current_pos = coprocessor::get_encoder_value(i);
-        uint32_t delta = static_cast<int32_t>(static_cast<int64_t>(current_pos) - static_cast<int64_t>(e.last_pos));
-        pumps::increment_speed(i, delta);
+        uint16_t current_pos = coprocessor::get_encoder_value(i);
+        uint16_t delta_magnitude = (current_pos - e.last_pos);
+        int32_t delta_sign = 1;
+        if (delta_magnitude > (__UINT16_MAX__ / 2u))
+        {
+            delta_sign = -1;
+            delta_magnitude = -delta_magnitude;
+        }
+        if (pumps::increment_speed(i, delta_sign * static_cast<int32_t>(delta_magnitude)) != HAL_OK)
+            ERR("Failed to adjust speed for #%u", i);
         e.last_pos = current_pos;
-        if (delta > 0) e.time = now;
+        if (delta_magnitude > 0) e.time = now;
     }
 }
 

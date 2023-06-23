@@ -36,6 +36,13 @@ namespace pumps
     {
         set_enable(enable);
     }
+    void update_manual_override()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            motors[i]->set_volume_rate(full_assigned_speed[i] * coprocessor::get_manual_override());
+        }
+    }
 
     void switch_hw_interlock()
     {
@@ -70,18 +77,22 @@ namespace pumps
         assert_param(i < MY_PUMPS_NUM);
         return motors[i]->get_volume_rate();
     }
-    void set_indicated_speed(size_t i, float v)
+    HAL_StatusTypeDef set_indicated_speed(size_t i, float v)
     {
         assert_param(i < MY_PUMPS_NUM);
+        assert_param(v >= 0);
+        if (v < 0) v = 0;
+        float lim = motors[i]->get_volume_rate_limit();
+        if (v > lim) v = lim;
         full_assigned_speed[i] = v;
         v *= coprocessor::get_manual_override();
-        motors[i]->set_volume_rate(v);
+        return motors[i]->set_volume_rate(v);
     }
-    void increment_speed(size_t i, int32_t diff)
+    HAL_StatusTypeDef increment_speed(size_t i, int32_t diff)
     {
         assert_param(i < MY_PUMPS_NUM);
-        if (diff == 0) return;
-        set_indicated_speed(i, full_assigned_speed[i] + params->volume_rate_resolution * diff);
+        if (diff == 0) return HAL_OK;
+        return set_indicated_speed(i, full_assigned_speed[i] + params->volume_rate_resolution * diff);
     }
     float get_speed_fraction(size_t i)
     {

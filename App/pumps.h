@@ -19,6 +19,7 @@ namespace pumps
 
     void reload_motor_params();
     void reload_params();
+    void update_manual_override();
 
     void set_enable(bool v);
     bool get_enabled();
@@ -27,8 +28,8 @@ namespace pumps
 
     bool get_running(size_t i);
     float get_indicated_speed(size_t i);
-    void set_indicated_speed(size_t i, float v);
-    void increment_speed(size_t i, int32_t diff);
+    HAL_StatusTypeDef set_indicated_speed(size_t i, float v);
+    HAL_StatusTypeDef increment_speed(size_t i, int32_t diff);
     float get_speed_fraction(size_t i);
     float get_load_fraction(size_t i);
     bool get_missing(size_t i);

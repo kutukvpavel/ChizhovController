@@ -45,6 +45,9 @@ static speed_range_t ranges[SPEED_RANGE_NUM] = {
 
 static size_t calculate_range(float pulse_hz, size_t current)
 {
+    assert_param(current < SPEED_RANGE_NUM);
+    assert_param(pulse_hz >= 0);
+    
     auto& cr = ranges[current];
     if ((pulse_hz < (cr.max_hz + cr.hyst_hz)) && (pulse_hz > (cr.min_hz - cr.hyst_hz))) return current;
 
@@ -81,7 +84,7 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
     assert_param(p);
     assert_param(r);
 
-    if (timer == &htim3)
+    /*if (timer == &htim3)
     {
         MX_TIM3_Init();
     }
@@ -101,7 +104,7 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
     {
         ERR("Unknown pump timer at %p!\n\tTIM3=%p\n\tTIM4=%p\n\tTIM10=%p\n\tTIM11=%p", timer, 
             &htim3, &htim4, &htim10, &htim11);
-    }
+    }*/
     DBG("Created a pump: TIM @ %p, DIR @ %u, params @ %p, reg @ %p", timer->Instance, dir, p, r);
 }
 
@@ -117,19 +120,19 @@ void motor_t::reload_params()
     xSemaphoreGive(params_mutex);
 }
 
-void motor_t::set_volume_rate(float v)
+HAL_StatusTypeDef motor_t::set_volume_rate(float v)
 {
-    if (v == last_volume_rate) return;
+    if (v == last_volume_rate) return HAL_OK;
     if (v <= __FLT_EPSILON__)
     {
         HAL_TIM_Base_Stop(timer);
         last_volume_rate = 0;
         reg->volume_rate = 0;
         reg->rps = 0;
-        return;
+        return HAL_OK;
     }
 
-    while (xSemaphoreTake(params_mutex, portMAX_DELAY));
+    if (xSemaphoreTake(params_mutex, pdMS_TO_TICKS(50)) != pdTRUE) return HAL_BUSY;
     float rps = v * params.volume_rate_to_rps;
     if (rps > params.max_rate_rps) rps = params.max_rate_rps;
     reg->rps = rps;
@@ -139,6 +142,7 @@ void motor_t::set_volume_rate(float v)
 
     current_range = calculate_range(pulse_hz, current_range);
     uint16_t psc = ranges[current_range].psc;
+    assert_param(pulse_hz > 0);
     float farr = roundf(ranges[current_range].arr_clock / pulse_hz);
     if (farr > UINT16_MAX) farr = UINT16_MAX;
     else if (farr < MIN_TIMER_ARR) farr = MIN_TIMER_ARR;
@@ -154,6 +158,13 @@ void motor_t::set_volume_rate(float v)
         HAL_TIM_Base_Start(timer);
     }
     last_volume_rate = v;
+
+    return HAL_OK;
+}
+
+float motor_t::get_volume_rate_limit()
+{
+    return params.max_rate_rps / params.volume_rate_to_rps;
 }
 
 float motor_t::get_volume_rate()
