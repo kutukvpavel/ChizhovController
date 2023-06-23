@@ -4,6 +4,8 @@
 #include "sr_io.h"
 #include "coprocessor.h"
 
+#include <math.h>
+
 namespace pumps
 {
     static motor_t* motors[MY_PUMPS_NUM];
@@ -57,6 +59,11 @@ namespace pumps
     bool get_enabled()
     {
         return enable;
+    }
+
+    bool get_running(size_t i)
+    {
+        return enable && (!motors[i]->get_paused()) && (motors[i]->get_volume_rate() > __FLT_EPSILON__);
     }
     float get_indicated_speed(size_t i)
     {

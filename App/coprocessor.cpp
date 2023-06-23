@@ -91,7 +91,7 @@ namespace coprocessor
         }
         if (crc == standby_buffer->crc)
         {
-            if (xSemaphoreTake(sync_mutex, pdMS_TO_TICKS(10)) != pdTRUE) return;
+            ACQUIRE_MUTEX();
             volatile memory_map_t *p = filled_buffer;
             filled_buffer = standby_buffer;
             standby_buffer = p;
@@ -145,11 +145,12 @@ namespace coprocessor
         ACQUIRE_MUTEX();
         btn_double_buffer |= filled_buffer->encoder_btn_pressed;
         filled_buffer->encoder_btn_pressed = 0;
+        RELEASE_MUTEX();
+
         uint8_t mask = (1u << i);
         bool ret = btn_double_buffer & mask;
         btn_double_buffer &= ~mask;
 
-        RELEASE_MUTEX();
         return ret;
     }
     bool get_drv_error(size_t i)
@@ -187,6 +188,7 @@ STATIC_TASK_BODY(MY_COPROC)
         coprocessor::sync();
         vTaskDelayUntil(&last_wake, pdMS_TO_TICKS(delay));
         pwdt->last_time = xTaskGetTickCount();
+        if ((last_wake + pdMS_TO_TICKS(delay)) < pwdt->last_time) last_wake = pwdt->last_time;
     }
 }
 _END_STD_C

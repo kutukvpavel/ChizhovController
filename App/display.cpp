@@ -35,11 +35,11 @@ namespace display
 {
     enum leds : size_t
     {
-        load_fraction = 0,
-        speed_fraction = 4,
-        paused = 13,
+        overload = 0,
+        paused,
         running,
-        overload
+        speed_fraction = 4,
+        load_fraction = 12
     };
     struct __packed single_channel_map
     {
@@ -95,7 +95,6 @@ namespace display
 
         static const uint8_t odd_digits[] = GENERATE_DIGIT_TABLE(ODD);
         static const uint8_t even_digits[] = GENERATE_DIGIT_TABLE(EVEN);
-        static const uint8_t point = 0x01;
         static_assert(array_size(odd_digits) >= ('9' - '0'));
         static_assert(array_size(even_digits) >= ('9' - '0'));
 
@@ -106,9 +105,29 @@ namespace display
             if (src[i + shift] == '.')
             {
                 shift++;
-                d[i - 1] |= point;
+                d[i - 1] &= ~BV((i % 2 == 0) ? static_cast<uint32_t>(ODD_DP) : static_cast<uint32_t>(EVEN_DP)); //Common-anode!
             }
-            d[i] = ~((i % 2 == 0) ? odd_digits : even_digits)[src[i + shift] - '0']; //Not a mistake, even/odd meant counting from 1
+            char c = src[i + shift];
+            switch (c)
+            {
+                case '0':
+                case '1':
+                case '2':
+                case '3':
+                case '4':
+                case '5':
+                case '6':
+                case '7':
+                case '8':
+                case '9':
+                    //Not a mistake, even/odd meant counting from 1
+                    d[i] = ~((i % 2 == 0) ? odd_digits : even_digits)[c - '0'];
+                    break;
+                default:
+                    d[i] = 0xFF; //empty digit
+                    break;
+            }
+            
         }
     }
     uint16_t convert_to_leds(float speed_fraction, float load_fraction)
@@ -175,7 +194,7 @@ namespace display
                 break;
             case test_modes::digits:
             {
-                convert_to_7seg(&(b.digits), "123.4");
+                convert_to_7seg(&(b.digits), "12.34");
                 uint16_t bits = convert_to_leds(0.45, 0.45);
                 bits |= (1u << leds::overload) | (1u << leds::paused);
                 b.leds[0] = (bits >> 8) & 0xFF;
@@ -203,8 +222,9 @@ namespace display
                 uint16_t bits = convert_to_leds(pumps::get_speed_fraction(i), pumps::get_load_fraction(i));
                 if (pumps::get_overload(i)) bits |= (1u << leds::overload);
                 if (pumps::get_paused(i)) bits |= (1u << leds::paused);
-                b.leds[0] = (bits >> 8) & 0xFF;
-                b.leds[1] = bits & 0xFF;
+                if (pumps::get_running(i)) bits |= (1u << leds::running);
+                b.leds[0] = bits & 0xFF;
+                b.leds[1] = (bits >> 8) & 0xFF;
                 break;
             }
             }

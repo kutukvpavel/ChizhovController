@@ -25,6 +25,7 @@ namespace pumps
     void switch_hw_interlock();
     bool get_hw_interlock_ok();
 
+    bool get_running(size_t i);
     float get_indicated_speed(size_t i);
     void set_indicated_speed(size_t i, float v);
     void increment_speed(size_t i, int32_t diff);

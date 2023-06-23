@@ -37,6 +37,23 @@ _END_STD_C
 
 namespace cli_commands
 {
+    //Common API
+    void print_input_invert()
+    {
+        sr_buf_t* inv = nvs::get_input_inversion();
+        for (size_t i = 0; i < sr_io::input_buffer_len; i++)
+        {
+            printf("\tWord #%u = 0x%X = 0b ", i, inv[i]);
+            for (size_t j = 0; j < (sizeof(sr_buf_t) * __CHAR_BIT__); j++)
+            {
+                putc((inv[i] & (1u << (sizeof(sr_buf_t) * __CHAR_BIT__ - j - 1))) ? '1' : '0', stdout);
+                if (j % 8 == 7) putc(' ', stdout);
+            }
+            putc('\n', stdout);
+        }
+    }
+
+    //Actual commands
     uint8_t info(int argc, char** argv)
     {
         puts(MY_FIRMWARE_INFO_STR);
@@ -134,6 +151,60 @@ namespace cli_commands
         nvs::dump_hex();
         return 0;
     }
+    uint8_t nvs_report(int argc, char** argv)
+    {
+        prints(
+            "\tNVS ver: stored = %hu, required = %hu; %s.\n",
+            nvs::get_stored_version(),
+            nvs::get_required_version(),
+            nvs::get_version_match() ? "MATCH" : "DEFAULTS USED!"
+        );
+        print_input_invert();
+        printf("\tModbus address = %u\n", nvs::get_modbus_addr());
+        auto motor_params = nvs::get_motor_params();
+        auto pump_params = nvs::get_pump_params();
+        auto motor_regs = nvs::get_motor_regs();
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            printf("\tMotor #%u params:\n");
+            auto& mp = motor_params[i];
+            printf(
+                "\t\tVol.rate-to-RPS coef = %f\n"
+                "\t\tTeeth = %u\n"
+                "\t\tMicrosteps = %u\n"
+                "\t\tDir = %u\n"
+                "\t\tMax rate (RPS) = %f\n"
+                "\t\tMax load (drv error units) = %f\n",
+                mp.volume_rate_to_rps,
+                mp.teeth,
+                mp.microsteps,
+                mp.dir,
+                mp.max_rate_rps,
+                mp.max_load_err
+            );
+            printf("\tMotor #%u regs:\n");
+            auto& mr = motor_regs[i];
+            printf(
+                "\t\tVol.rate = %f\n"
+                "\t\tRPS = %f\n"
+                "\t\tError = %f\n"
+                "\t\tStatus = %u\n",
+                mr.volume_rate,
+                mr.rps,
+                mr.err,
+                mr.status
+            );
+            printf("\tPump #%u params:\n");
+            auto& pp = pump_params[i];
+            printf(
+                "\t\tInvert EN = %u\n"
+                "\t\tVol.rate resolution (man) = %f\n",
+                pp.invert_enable,
+                pp.volume_rate_resolution
+            );
+        }
+        return 0;
+    }
 
     uint8_t get_coproc_err_rate(int argc, char** argv)
     {
@@ -165,20 +236,6 @@ namespace cli_commands
         return 0;
     }
 
-    void print_input_invert()
-    {
-        sr_buf_t* inv = nvs::get_input_inversion();
-        for (size_t i = 0; i < sr_io::input_buffer_len; i++)
-        {
-            printf("\tWord #%u = 0x%X = 0b ", i, inv[i]);
-            for (size_t j = 0; j < (sizeof(sr_buf_t) * __CHAR_BIT__); j++)
-            {
-                putc((inv[i] & (1u << (sizeof(sr_buf_t) * __CHAR_BIT__ - j - 1))) ? '1' : '0', stdout);
-                if (j % 8 == 7) putc(' ', stdout);
-            }
-            putc('\n', stdout);
-        }
-    }
     uint8_t input_invert(int argc, char** argv)
     {
         if (argc < 2)
@@ -246,6 +303,7 @@ void init()
         &cli_commands::nvs_reset);
     CLI_ADD_CMD("nvs_test", "Test EEPROM readback, performs sequential number write and read, and does nvs_save afterwards",
         &cli_commands::nvs_test);
+    CLI_ADD_CMD("nvs_report", "Report NVS contents in human-readable format", &cli_commands::nvs_report);
 
     CLI_ADD_CMD("get_coproc_err_rate", "Print coprocessor CRC error count since boot",
         &cli_commands::get_coproc_err_rate);

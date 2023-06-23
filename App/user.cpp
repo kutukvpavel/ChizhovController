@@ -77,7 +77,7 @@ void StartMainTask(void *argument)
     MX_USB_DEVICE_Init();
     HAL_IWDG_Refresh(&hiwdg);
 
-    DBG("[@ %lu] Staring tasks. Multithreaded init:", compat::micros());
+    DBG("[@ %lu] Starting tasks. Multithreaded init:", compat::micros());
     START_STATIC_TASK(MY_ADC, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_IO, 1, handle);
@@ -250,7 +250,7 @@ void app_main(wdt::task_t* pwdt)
     }
     
     default:
-        DBG("State machine corrupt");
+        ERR("State machine corrupt");
         vTaskDelay(pdMS_TO_TICKS(100));
         HAL_NVIC_SystemReset();
         break;
@@ -286,7 +286,7 @@ void supervize_manual_mode()
         TickType_t time = configINITIAL_TICK_COUNT;
         uint32_t last_pos = 0;
     };
-    static const TickType_t max_edit_delay = pdMS_TO_TICKS(5000);
+    static const TickType_t max_edit_delay = pdMS_TO_TICKS(4000);
     static edit_t enable_edit[MY_PUMPS_NUM] = { };
 
     if (!coprocessor::get_initialized()) return;
@@ -299,13 +299,15 @@ void supervize_manual_mode()
         {
             e.enable = !e.enable;
             e.time = now;
+            DBG("Man edit #%u en = %u", i, e.enable);
         }
         if (e.enable && ((now - e.time) > max_edit_delay)) e.enable = false;
         if (!e.enable) continue;
         uint32_t current_pos = coprocessor::get_encoder_value(i);
-        pumps::increment_speed(i, static_cast<int32_t>(
-            static_cast<int64_t>(current_pos) - static_cast<int64_t>(e.last_pos)));
+        uint32_t delta = static_cast<int32_t>(static_cast<int64_t>(current_pos) - static_cast<int64_t>(e.last_pos));
+        pumps::increment_speed(i, delta);
         e.last_pos = current_pos;
+        if (delta > 0) e.time = now;
     }
 }
 

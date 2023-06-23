@@ -72,13 +72,14 @@ namespace front_panel
     {
         struct debouncer_t
         {
-            int32_t result = -1;
+            bool result = false;
             bool prev = false;
             uint32_t counter = 0;
         };
         const uint32_t delay = 2;
         static debouncer_t debounce[buttons::B_LEN] = {};
-        static debouncer_t debounce_pause[MY_PUMPS_NUM] = {};
+        static debouncer_t debounce_pause[MY_PUMPS_MAX] = {};
+        assert_param(channel < MY_PUMPS_MAX);
 
         bool current;
         debouncer_t* d;
@@ -87,17 +88,13 @@ namespace front_panel
         case buttons::b_pause:
             current = sr_io::get_input(pause_btn_mapping[channel]);
             d = &(debounce_pause[channel]);
-        
+            break;
         default:
             current = sr_io::get_input(buttons_mapping[b]);
             d = &(debounce[b]);
+            break;
         }
 
-        if (d->result < 0) //First time init
-        {
-            d->result = current ? 1 : 0;
-            d->prev = d->result;
-        }
         if (d->prev == current) d->counter++;
         else
         {

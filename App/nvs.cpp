@@ -187,6 +187,18 @@ namespace nvs
         return res;
     }
 
+    uint8_t get_stored_version()
+    {
+        return nvs_ver;
+    }
+    uint8_t get_required_version()
+    {
+        return MY_NVS_VERSION;
+    }
+    bool get_version_match()
+    {
+        return MY_NVS_VERSION == nvs_ver;
+    }
     motor_reg_t* get_motor_regs()
     {
         return &(storage.motor_regs[0]);

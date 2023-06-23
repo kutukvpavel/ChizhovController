@@ -9,7 +9,7 @@
 #define MIN_TIMER_ARR (UINT16_MAX / 1000)
 #define SET_STATUS_BIT(b) reg->status |= (1u << (b))
 #define RESET_STATUS_BIT(b) reg->status &= ~(1u << (b))
-#define CHECK_STATUS_BIT(b) ((reg->status & (1u << status_bits::missing)) > 0)
+#define CHECK_STATUS_BIT(b) ((reg->status & (1u << (b))) > 0)
 
 struct speed_range_t
 {
