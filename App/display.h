@@ -1,5 +1,8 @@
 #pragma once
 
+#include <inttypes.h>
+#include <stddef.h>
+
 namespace display
 {
     enum test_modes
@@ -14,4 +17,5 @@ namespace display
     };
 
     void set_lamp_test_mode(test_modes m);
+    void set_edit(size_t channel, bool v);
 } // namespace display

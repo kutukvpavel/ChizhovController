@@ -37,7 +37,7 @@ namespace nvs
                 .reserved1 = 0, //alignment
                 .volume_rate_to_rps = 1,
                 .max_rate_rps = 20,
-                .max_load_err = 17
+                .max_load_err = 14
             },
             {
                 .dir = 0,
@@ -46,7 +46,7 @@ namespace nvs
                 .reserved1 = 0, //alignment
                 .volume_rate_to_rps = 1,
                 .max_rate_rps = 20,
-                .max_load_err = 17
+                .max_load_err = 14
             },
             {
                 .dir = 0,
@@ -55,7 +55,7 @@ namespace nvs
                 .reserved1 = 0, //alignment
                 .volume_rate_to_rps = 1,
                 .max_rate_rps = 20,
-                .max_load_err = 17
+                .max_load_err = 14
             }
         },
         .motor_regs = {
@@ -95,6 +95,7 @@ namespace nvs
     }
     HAL_StatusTypeDef eeprom_write(uint16_t addr, uint8_t* buf, uint16_t len)
     {
+        static const TickType_t page_write_delay = pdMS_TO_TICKS(12);
         assert_param((addr + len) < MY_NVS_TOTAL_SIZE);
         assert_param(addr % MY_NVS_PAGE_SIZE == 0);
         HAL_StatusTypeDef status = HAL_OK;
@@ -103,19 +104,23 @@ namespace nvs
         size_t remainder = len % MY_NVS_PAGE_SIZE;
         DBG("Writing NVS: Full pages = %u, Remainder = %u", full_pages, remainder);
         uint16_t current_page_addr = addr;
+        vTaskDelay(page_write_delay / 2);
         for (size_t i = 0; i < full_pages; i++)
         {
             status = i2c::mem_write(MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, buf, MY_NVS_PAGE_SIZE);
             if (status != HAL_OK) break;
+            //DBG("Written page #%u...", i);
             buf += MY_NVS_PAGE_SIZE;
             current_page_addr += MY_NVS_PAGE_SIZE;
-            vTaskDelay(pdMS_TO_TICKS(5));
+            vTaskDelay(page_write_delay);
         }
         if (status != HAL_OK) return status;
+        DBG("Pages written OK");
         if (remainder > 0)
         {
             status = i2c::mem_write(MY_NVS_I2C_ADDR(current_page_addr), current_page_addr & 0xFF, buf, remainder);
-            vTaskDelay(pdMS_TO_TICKS(5));
+            vTaskDelay(page_write_delay / 2);
+            DBG("Remainder written OK");
         }
         return status;
     }

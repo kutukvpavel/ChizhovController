@@ -456,7 +456,7 @@ void HAL_TIM_MspPostInit(TIM_HandleTypeDef* timHandle)
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* USER CODE BEGIN TIM11_MspPostInit 1 */
-
+  
   /* USER CODE END TIM11_MspPostInit 1 */
   }
 

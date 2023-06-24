@@ -5,10 +5,12 @@
 #include "i2c_sync.h"
 #include "pumps.h"
 #include "crc.h"
+#include "average/average.h"
 
 #include <math.h>
 
 #define MAX_ENCODERS 3
+#define AVERAGING 20
 #define COPROCESSOR_ADDR (0x08 << 1u)
 #define COPROCESSOR_INIT_BYTE 0xA0
 #define PACKED_FOR_I2C __packed __aligned(sizeof(uint32_t))
@@ -25,6 +27,8 @@ namespace coprocessor
         uint8_t encoder_btn_pressed;
         uint8_t drv_error_bitfield;
         uint8_t drv_missing_bitfield;
+        uint8_t drv_load[MY_PUMPS_NUM];
+        uint8_t reserved1;
         uint8_t crc;
     };
     static volatile memory_map_t buffer1 = {};
@@ -35,6 +39,7 @@ namespace coprocessor
     static SemaphoreHandle_t sync_mutex = NULL;
     static bool initialized = false;
     static uint32_t crc_err_stats = 0;
+    static average load_average[MY_PUMPS_NUM] = { average(AVERAGING), average(AVERAGING), average(AVERAGING) };
 
     HAL_StatusTypeDef init()
     {
@@ -97,6 +102,10 @@ namespace coprocessor
             volatile memory_map_t *p = filled_buffer;
             filled_buffer = standby_buffer;
             standby_buffer = p;
+            for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+            {
+                load_average[i].enqueue(filled_buffer->drv_load[i]);
+            }
             RELEASE_MUTEX();
         }
         else
@@ -120,7 +129,6 @@ namespace coprocessor
 
         ACQUIRE_MUTEX();
         uint16_t ret = filled_buffer->encoder_pos[i];
-
         RELEASE_MUTEX();
         return __UINT16_MAX__ - ret; //Invert to get clockwise = +
     }
@@ -131,9 +139,8 @@ namespace coprocessor
         const float span = 1024.0f * 0.9f;
         assert_param(sync_mutex);
 
-        ACQUIRE_MUTEX();
-        float res = filled_buffer->manual_override / span;
-        RELEASE_MUTEX();
+        float res = filled_buffer->manual_override;
+        res /= span;
         
         if (res > max) res = max;
         if (res < min) res = min;
@@ -166,6 +173,14 @@ namespace coprocessor
         assert_param(i < MY_PUMPS_NUM);
         auto copy = filled_buffer->drv_missing_bitfield;
         return (copy & (1u << i)) > 0;
+    }
+    float get_drv_load(size_t i)
+    {
+        assert_param(i < MY_PUMPS_NUM);
+        ACQUIRE_MUTEX();
+        uint8_t copy = load_average[i].get_average();
+        RELEASE_MUTEX();
+        return static_cast<float>(copy) / 10.0f;
     }
 } // namespace coprocessor
 

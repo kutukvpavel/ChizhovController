@@ -111,6 +111,11 @@ namespace cli_commands
         }
         return 0;
     }
+    uint8_t pumps_debug(int argc, char** argv)
+    {
+        pumps::print_debug_info();
+        return 0;
+    }
     uint8_t coproc_report(int argc, char** argv)
     {
         printf("\tManual override = %f\n", coprocessor::get_manual_override());
@@ -120,12 +125,14 @@ namespace cli_commands
                 "\t\tDrv missing: %u\n"
                 "\t\tDrv error: %u\n"
                 "\t\tEncoder position = %u\n"
-                "\t\tEncoder btn pressed: %u\n",
+                "\t\tEncoder btn pressed: %u\n"
+                "\t\tDrv load err: %f\n",
                 i,
                 coprocessor::get_drv_missing(i),
                 coprocessor::get_drv_error(i),
                 coprocessor::get_encoder_value(i),
-                coprocessor::get_encoder_btn_pressed(i));
+                coprocessor::get_encoder_btn_pressed(i),
+                coprocessor::get_drv_load(i));
         }
         return 0;
     }
@@ -295,6 +302,7 @@ void init()
     CLI_ADD_CMD("periph_report", "Report peripheral state", &cli_commands::peripherals_report);
     CLI_ADD_CMD("coproc_report", "Report coprocessor-controled devices' state", &cli_commands::coproc_report);
     CLI_ADD_CMD("pumps_report", "Report pump state", &cli_commands::pumps_report);
+    CLI_ADD_CMD("pumps_debug", "Print pump debug info", &cli_commands::pumps_debug);
 
     CLI_ADD_CMD("nvs_save", "Save current non-volatile data into EEPROM", &cli_commands::nvs_save);
     CLI_ADD_CMD("nvs_load", "Load non-volatile data from EEPROM", &cli_commands::nvs_load);

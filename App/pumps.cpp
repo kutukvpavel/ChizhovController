@@ -8,11 +8,38 @@
 
 namespace pumps
 {
+    struct instance_cfg_t
+    {
+        TIM_HandleTypeDef* timer;
+        uint32_t timer_channel;
+        float full_assigned_speed;
+    };
+
     static motor_t* motors[MY_PUMPS_NUM];
-    static TIM_HandleTypeDef* m_timers[MY_PUMPS_MAX] = { &htim3, &htim4, &htim10, &htim11 }; 
+    static instance_cfg_t configs[MY_PUMPS_MAX] = {
+        {
+            &htim11,
+            TIM_CHANNEL_1,
+            0
+        },
+        {
+            &htim10,
+            TIM_CHANNEL_1,
+            0
+        },
+        {
+            &htim4,
+            TIM_CHANNEL_2,
+            0
+        }, 
+        {
+            &htim3,
+            TIM_CHANNEL_2,
+            0
+        }
+    };
     static const params_t* params;
     static bool enable = false;
-    static float full_assigned_speed[MY_PUMPS_NUM] = { 0 };
 
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
@@ -20,8 +47,11 @@ namespace pumps
         set_enable(false);
         for (size_t i = 0; i < array_size(motors); i++)
         {
-            assert_param(m_timers[i]);
-            motors[i] = new motor_t(m_timers[i], static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
+            auto& cfg = configs[i];
+            assert_param(cfg.timer);
+            motors[i] = new motor_t(cfg.timer, cfg.timer_channel, 
+                static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
+            cfg.full_assigned_speed = mr[i].volume_rate;
         }
     }
 
@@ -40,7 +70,22 @@ namespace pumps
     {
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
         {
-            motors[i]->set_volume_rate(full_assigned_speed[i] * coprocessor::get_manual_override());
+            motors[i]->set_volume_rate(configs[i].full_assigned_speed * coprocessor::get_manual_override());
+        }
+    }
+    void print_debug_info()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            printf("Motor #%u:\n", i);
+            motors[i]->print_debug_info();
+        }
+    }
+    void update_load()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            motors[i]->set_load_err(coprocessor::get_drv_load(i));
         }
     }
 
@@ -84,7 +129,7 @@ namespace pumps
         if (v < 0) v = 0;
         float lim = motors[i]->get_volume_rate_limit();
         if (v > lim) v = lim;
-        full_assigned_speed[i] = v;
+        configs[i].full_assigned_speed = v;
         v *= coprocessor::get_manual_override();
         return motors[i]->set_volume_rate(v);
     }
@@ -92,7 +137,7 @@ namespace pumps
     {
         assert_param(i < MY_PUMPS_NUM);
         if (diff == 0) return HAL_OK;
-        return set_indicated_speed(i, full_assigned_speed[i] + params->volume_rate_resolution * diff);
+        return set_indicated_speed(i, configs[i].full_assigned_speed + params->volume_rate_resolution * diff);
     }
     float get_speed_fraction(size_t i)
     {

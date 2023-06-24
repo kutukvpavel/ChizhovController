@@ -34,6 +34,7 @@ class motor_t
 
 private:
     TIM_HandleTypeDef* timer;
+    uint32_t timer_channel;
     sr_io::out pin_dir;
     float last_volume_rate = 0;
     float current_load_err;
@@ -42,10 +43,11 @@ private:
     motor_reg_t* reg;
     SemaphoreHandle_t params_mutex = NULL;
 public:
-    motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
+    motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
     ~motor_t();
 
     void reload_params();
+    void print_debug_info();
 
     float get_volume_rate_limit();
     HAL_StatusTypeDef set_volume_rate(float v);

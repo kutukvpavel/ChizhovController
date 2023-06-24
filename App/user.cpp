@@ -124,7 +124,7 @@ enum class states : uint16_t
 
 void supervize_led(led_states s);
 void supervize_fp(states s); //State-independent FP elements
-void supervize_manual_edit();
+bool supervize_manual_edit(); //Returns: edit operation invoked
 
 void app_main(wdt::task_t* pwdt)
 {
@@ -138,6 +138,7 @@ void app_main(wdt::task_t* pwdt)
     static led_states led = led_states::INIT;
     static states state = states::init;
     static states prev_state = states::init;
+    static bool edit_invoked = false;
 
     static_assert(array_size(state_names) >= (static_cast<uint16_t>(states::lamp_test) + 1));
 
@@ -171,7 +172,7 @@ void app_main(wdt::task_t* pwdt)
         led = led_states::INIT;
         //Here we wait until the user pushes start button
         front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
-        supervize_manual_edit(); //Allow to pre-set motor speed before turning on
+        if (supervize_manual_edit()) edit_invoked = true; //Allow to pre-set motor speed before turning on
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
@@ -190,7 +191,7 @@ void app_main(wdt::task_t* pwdt)
     case states::manual:
         led = led_states::HEARTBEAT;
         front_panel::set_light(front_panel::l_start, front_panel::l_state::on);
-        supervize_manual_edit();
+        if (supervize_manual_edit()) edit_invoked = true;
         if (front_panel::get_button(front_panel::b_start))
         {
             front_panel::clear_lights();
@@ -201,6 +202,8 @@ void app_main(wdt::task_t* pwdt)
         {
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
+            if (nvs::get_version_match() && edit_invoked) nvs::save();
+            edit_invoked = false;
             state = states::init;
         }
         break;
@@ -265,6 +268,7 @@ void app_main(wdt::task_t* pwdt)
     mb_regs::set_status(static_cast<uint16_t>(state));
     pumps::set_enable(state == states::automatic || state == states::manual);
     pumps::update_manual_override();
+    pumps::update_load();
 
     if (state != states::lamp_test) supervize_fp(state);
     supervize_led(led);
@@ -280,7 +284,7 @@ void supervize_fp(states s)
     }
 }
 
-void supervize_manual_edit()
+bool supervize_manual_edit()
 {
     struct edit_t
     {
@@ -291,9 +295,10 @@ void supervize_manual_edit()
     static const TickType_t max_edit_delay = pdMS_TO_TICKS(4000);
     static edit_t enable_edit[MY_PUMPS_NUM] = { };
 
-    if (!coprocessor::get_initialized()) return;
+    if (!coprocessor::get_initialized()) return false;
 
     TickType_t now = xTaskGetTickCount();
+    bool ret = false;
     for (size_t i = 0; i < MY_PUMPS_NUM; i++)
     {
         auto& e = enable_edit[i];
@@ -305,7 +310,9 @@ void supervize_manual_edit()
             DBG("Man edit #%u en = %u", i, e.enable);
         }
         if (e.enable && ((now - e.time) > max_edit_delay)) e.enable = false;
+        display::set_edit(i, e.enable);
         if (!e.enable) continue;
+        ret = true;
         uint16_t current_pos = coprocessor::get_encoder_value(i);
         uint16_t delta_magnitude = (current_pos - e.last_pos);
         int32_t delta_sign = 1;
@@ -319,6 +326,7 @@ void supervize_manual_edit()
         e.last_pos = current_pos;
         if (delta_magnitude > 0) e.time = now;
     }
+    return ret;
 }
 
 void supervize_led(led_states s)

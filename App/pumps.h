@@ -20,6 +20,8 @@ namespace pumps
     void reload_motor_params();
     void reload_params();
     void update_manual_override();
+    void print_debug_info();
+    void update_load();
 
     void set_enable(bool v);
     bool get_enabled();

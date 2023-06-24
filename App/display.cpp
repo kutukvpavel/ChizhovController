@@ -48,6 +48,7 @@ namespace display
         uint8_t leds[2];
     };
     static single_channel_map buffer[DISPLAY_CHANNELS] = { {}, {}, {} };
+    static bool edit[DISPLAY_CHANNELS];
     static test_modes mode = test_modes::none;
 
     uint8_t get_fraction_bits(float v, size_t total_bits)
@@ -146,6 +147,9 @@ namespace display
 
     void compose()
     {
+        static const TickType_t edit_blink_delay = pdMS_TO_TICKS(400);
+
+        static TickType_t last_edit_blink_toggle[DISPLAY_CHANNELS] = {};
         static char temp[DIGITS_PER_CHANNEL + 3]; //+ decimal point and a null character
         static bool interop_running = false;
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
@@ -208,15 +212,22 @@ namespace display
                 break;
             default:
             {
-                if (pumps::get_missing(i))
+                TickType_t now = xTaskGetTickCount();
+                if ((pumps::get_missing(i) && !edit[i]) || (edit[i] && (now - last_edit_blink_toggle[i]) < edit_blink_delay))
                 {
-                    memset(&(b.digits), 1, sizeof(b.digits)); // Blank out missing channels
+                    memset(&(b.digits), 0xFF, sizeof(b.digits)); // Blank out missing channels (or during edit blinking)
                     memset(&(b.leds), 0, sizeof(b.leds));
                     continue;
                 }
+                if (edit[i])
+                {
+                    if ((now - last_edit_blink_toggle[i]) > (edit_blink_delay * 2))
+                        last_edit_blink_toggle[i] = now;
+                }
                 snprintf(temp, DIGITS_PER_CHANNEL + 2, "%5f", pumps::get_indicated_speed(i));
                 convert_to_7seg(&(b.digits), temp);
-                uint16_t bits = convert_to_leds(pumps::get_speed_fraction(i), pumps::get_load_fraction(i));
+                uint16_t bits = convert_to_leds(pumps::get_speed_fraction(i),
+                    pumps::get_running(i) ? pumps::get_load_fraction(i) : 0);
                 if (pumps::get_overload(i)) bits |= (1u << leds::overload);
                 if (pumps::get_paused(i)) bits |= (1u << leds::paused);
                 if (pumps::get_running(i)) bits |= (1u << leds::running);
@@ -231,6 +242,13 @@ namespace display
     void set_lamp_test_mode(test_modes m)
     {
         mode = m;
+    }
+    void set_edit(size_t channel, bool v)
+    {
+        static_assert(MY_PUMPS_NUM == DISPLAY_CHANNELS);
+        assert_param(channel < MY_PUMPS_NUM);
+
+        edit[channel] = v;
     }
 } // namespace display
 

@@ -13,4 +13,5 @@ namespace coprocessor
     bool get_encoder_btn_pressed(size_t i);
     bool get_drv_error(size_t i);
     bool get_drv_missing(size_t i);
+    float get_drv_load(size_t i);
 } // namespace coprocessor

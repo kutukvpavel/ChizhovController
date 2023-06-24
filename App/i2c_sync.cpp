@@ -59,7 +59,7 @@ namespace i2c
         HAL_StatusTypeDef ret = HAL_I2C_Mem_Read(&hi2c2, dev_addr, mem_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, timeout);
 
         RELEASE_MUTEX();
-        DBG("I2C mem_read returns %u", ret);
+        //DBG("I2C mem_read returns %u", ret);
         return ret;
     }
     //Busy-wait
@@ -72,7 +72,7 @@ namespace i2c
         HAL_StatusTypeDef ret = HAL_I2C_Mem_Write(&hi2c2, dev_addr, mem_addr, I2C_MEMADD_SIZE_8BIT, buffer, len, timeout);
 
         RELEASE_MUTEX();
-        DBG("I2C mem_write returns %u", ret);
+        //DBG("I2C mem_write returns %u", ret);
         return ret;
     }
 } // namespace i2c

@@ -72,8 +72,8 @@ static size_t calculate_range(float pulse_hz, size_t current)
 
 //motor_t
 
-motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p, motor_reg_t* r) 
-    : timer(tim), pin_dir(dir), params(*p), reg(r)
+motor_t::motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r) 
+    : timer(tim), timer_channel(channel), pin_dir(dir), params(*p), reg(r)
 {
     static_assert(sizeof(motor_params_t) % 2 == 0);
     static_assert(sizeof(motor_reg_t) % 2 == 0);
@@ -84,32 +84,16 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, sr_io::out dir, const motor_params_t* p
     assert_param(p);
     assert_param(r);
 
-    /*if (timer == &htim3)
-    {
-        MX_TIM3_Init();
-    }
-    else if (timer == &htim4)
-    {
-        MX_TIM4_Init();
-    }
-    else if (timer == &htim10)
-    {
-        MX_TIM10_Init();
-    }
-    else if (timer == &htim11)
-    {
-        MX_TIM11_Init();
-    }
-    else
-    {
-        ERR("Unknown pump timer at %p!\n\tTIM3=%p\n\tTIM4=%p\n\tTIM10=%p\n\tTIM11=%p", timer, 
-            &htim3, &htim4, &htim10, &htim11);
-    }*/
-    DBG("Created a pump: TIM @ %p, DIR @ %u, params @ %p, reg @ %p", timer->Instance, dir, p, r);
+    HAL_TIM_Base_Start(timer);
+    set_volume_rate(reg->volume_rate);
+    DBG("Created a pump: TIM @ %p, DIR @ %u, params @ %p, reg @ %p, preset = %f", 
+        timer->Instance, dir, p, r, reg->volume_rate);
 }
 
 motor_t::~motor_t()
 {
+    HAL_TIM_PWM_Stop(timer, timer_channel);
+    HAL_TIM_Base_Stop(timer);
     vSemaphoreDelete(params_mutex);
 }
 
@@ -119,13 +103,28 @@ void motor_t::reload_params()
     params = *nvs::get_motor_params();
     xSemaphoreGive(params_mutex);
 }
+void motor_t::print_debug_info()
+{
+    printf(
+        "\tVol.rate = %f\n"
+        "\tTimer range = %u\n"
+        "\tARR = %lu\n"
+        "\tPSC = %lu\n"
+        "\tCR1 = %04lX\n",
+        last_volume_rate,
+        current_range,
+        timer->Instance->ARR,
+        timer->Instance->PSC,
+        timer->Instance->CR1
+    );
+}
 
 HAL_StatusTypeDef motor_t::set_volume_rate(float v)
 {
     if (v == last_volume_rate) return HAL_OK;
     if (v <= __FLT_EPSILON__)
     {
-        HAL_TIM_Base_Stop(timer);
+        HAL_TIM_PWM_Stop(timer, timer_channel);
         last_volume_rate = 0;
         reg->volume_rate = 0;
         reg->rps = 0;
@@ -155,7 +154,7 @@ HAL_StatusTypeDef motor_t::set_volume_rate(float v)
 
     if (last_volume_rate <= 0)
     {
-        HAL_TIM_Base_Start(timer);
+        HAL_TIM_PWM_Start(timer, timer_channel);
     }
     last_volume_rate = v;
 
@@ -208,11 +207,11 @@ void motor_t::set_paused(bool v)
 {
     if (get_paused() == v) return;
     if (v) {
-        HAL_TIM_Base_Stop(timer);
+        HAL_TIM_PWM_Stop(timer, timer_channel);
         SET_STATUS_BIT(status_bits::paused);
     }
     else {
-        HAL_TIM_Base_Start(timer);
+        HAL_TIM_PWM_Start(timer, timer_channel);
         RESET_STATUS_BIT(status_bits::paused);
     }
 }
