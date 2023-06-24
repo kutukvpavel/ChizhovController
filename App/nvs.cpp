@@ -7,7 +7,7 @@
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
 #define MY_NVS_VER_ADDR 0u
 #define MY_NVS_START_ADDRESS 8u
-#define MY_NVS_VERSION 1u
+#define MY_NVS_VERSION 2u
 #define MY_NVS_PAGE_SIZE 8u
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
@@ -23,6 +23,7 @@ namespace nvs
         motor_reg_t motor_regs[MY_PUMPS_MAX];
         uint16_t modbus_id;
         sr_buf_t input_invert[sr_io::input_buffer_len];
+        a_io::cal_t analog_cal[a_io::in::LEN];
     };
     static storage_t storage = {
         .pump_params = {
@@ -76,7 +77,8 @@ namespace nvs
             }
         },
         .modbus_id = 1,
-        .input_invert = { (1u << sr_io::in::IN2) } //Invert Stop button (NC)
+        .input_invert = { (1u << sr_io::in::IN2) }, //Invert Stop button (NC)
+        .analog_cal = {}
     };
 
     static uint8_t nvs_ver = 0;
@@ -224,5 +226,9 @@ namespace nvs
     sr_buf_t* get_input_inversion()
     {
         return storage.input_invert;
+    }
+    a_io::cal_t* get_analog_cal()
+    {
+        return storage.analog_cal;
     }
 } // namespace nvs

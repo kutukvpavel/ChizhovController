@@ -213,10 +213,15 @@ namespace display
             default:
             {
                 TickType_t now = xTaskGetTickCount();
-                if ((pumps::get_missing(i) && !edit[i]) || (edit[i] && (now - last_edit_blink_toggle[i]) < edit_blink_delay))
+                if (pumps::get_missing(i) && !edit[i])
                 {
                     memset(&(b.digits), 0xFF, sizeof(b.digits)); // Blank out missing channels (or during edit blinking)
                     memset(&(b.leds), 0, sizeof(b.leds));
+                    continue;
+                }
+                if (edit[i] && (now - last_edit_blink_toggle[i]) < edit_blink_delay)
+                {
+                    memset(&(b.digits), 0xFF, sizeof(b.digits));
                     continue;
                 }
                 if (edit[i])

@@ -7,6 +7,7 @@
 #include "nvs.h"
 #include "task_handles.h"
 #include "wdt.h"
+#include "a_io.h"
 
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 
@@ -33,10 +34,18 @@ namespace mb_regs
 
     struct PACKED_FOR_MODBUS reg_t
     {
+        uint16_t pumps_num = MY_PUMPS_NUM;
+        uint16_t thermocouples_num = MY_TEMP_CHANNEL_NUM;
+        uint16_t input_words_num = sr_io::input_buffer_len;
+        uint16_t output_words_num = sr_io::output_buffer_len;
+        uint16_t analog_input_num = a_io::in::LEN;
+
         uint16_t status = 0;
         uint16_t interface_active = 0;
-        float max6675_temps[MY_TEMP_CHANNEL_NUM];
         uint16_t addr = 1; //Len = 1
+        float max6675_temps[MY_TEMP_CHANNEL_NUM];
+        float analog_inputs[a_io::in::LEN] = {};
+        a_io::cal_t analog_cal[a_io::in::LEN] = {};
         sr_buf_t sr_inputs[sr_io::input_buffer_len]; //Len = 1
         sr_buf_t sr_outputs[sr_io::output_buffer_len]; //Len = 2
         sr_buf_t commanded_outputs[sr_io::output_buffer_len]; //Len = 2

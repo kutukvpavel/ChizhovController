@@ -5,6 +5,7 @@
 #include "../Core/Inc/adc.h"
 #include "../Core/Inc/tim.h"
 #include "wdt.h"
+#include "nvs.h"
 
 #define PACKED_FOR_DMA __packed __aligned(sizeof(uint32_t))
 #define CHANNEL_REPETITION 4
@@ -43,6 +44,7 @@ namespace a_io
 
     void process_data()
     {
+        const cal_t* cal = nvs::get_analog_cal();
         for (size_t i = 0; i < CHANNEL_REPETITION; i++)
         {
             ch[in::vref].a->enqueue(__LL_ADC_CALC_VREFANALOG_VOLTAGE(*(mappings[i][in::vref]), LL_ADC_RESOLUTION_12B));
@@ -54,8 +56,12 @@ namespace a_io
             {
                 if (i == in::vref) continue;
                 ch[i].a->enqueue(__LL_ADC_CALC_DATA_TO_VOLTAGE(ch[in::vref].v, *(mappings[j][i]), LL_ADC_RESOLUTION_12B));
-                ch[i].v = ch[i].a->get_average();
             }
+        }
+        for (size_t i = 0; i < in::LEN; i++)
+        {
+            if (i == in::vref) continue;
+            ch[i].v = cal[i].k * ch[i].a->get_average() + cal[i].b;
         }
     }
 
@@ -64,6 +70,10 @@ namespace a_io
         assert_param(i < in::LEN);
 
         return ch[i].v;
+    }
+    float get_hot_junction_temp()
+    {
+        return ch[in::ambient_temp].v + ch[in::analog_thermocouple];
     }
 } // namespace a_io
 

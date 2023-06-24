@@ -3,6 +3,7 @@
 #include "user.h"
 #include "motor.h"
 #include "pumps.h"
+#include "a_io.h"
 
 namespace nvs
 {
@@ -21,4 +22,5 @@ namespace nvs
     pumps::params_t* get_pump_params();
     uint16_t* get_modbus_addr();
     sr_buf_t* get_input_inversion();
+    a_io::cal_t* get_analog_cal();
 } // namespace nvs
