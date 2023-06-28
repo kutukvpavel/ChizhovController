@@ -73,7 +73,7 @@ namespace a_io
     }
     float get_hot_junction_temp()
     {
-        return ch[in::ambient_temp].v + ch[in::analog_thermocouple];
+        return ch[in::ambient_temp].v + ch[in::analog_thermocouple].v;
     }
 } // namespace a_io
 
