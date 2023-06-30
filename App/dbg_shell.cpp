@@ -12,6 +12,7 @@
 #include "pumps.h"
 #include "thermo.h"
 #include "interop.h"
+#include "modbus_regs.h"
 
 static void init();
 
@@ -289,6 +290,18 @@ namespace cli_commands
         if (ret == HAL_OK) return 0;
         return ret + 2;
     }
+
+    uint8_t modbus_report(int argc, char** argv)
+    {
+        static bool install = false;
+
+        if (argc > 1)
+        {
+            install = (argv[1][0] - '0') > 0;
+        }
+        mb_regs::print_dbg(install);
+        return 0;
+    }
 } // namespace cli_commands
 
 void init()
@@ -330,4 +343,9 @@ void init()
         &cli_commands::input_invert);
 
     CLI_ADD_CMD("lamp_test", "Invoke display lamp test interop. Expects 1 arg: byte pattern.", &cli_commands::lamp_test);
+
+    CLI_ADD_CMD("modbus_report", 
+        "Report modbus error info and install/remove CDC receive callback into this console (toggle). "
+        "Single arg > 0 => install, ==0 => remove. No args = just print.",
+        &cli_commands::modbus_report);
 }

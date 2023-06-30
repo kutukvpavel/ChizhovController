@@ -10,6 +10,7 @@
 #include "a_io.h"
 
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
+#include "usbd_cdc_if.h"
 
 #ifndef ARRAY_SIZE
     #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -49,10 +50,11 @@ namespace mb_regs
         sr_buf_t sr_inputs[sr_io::input_buffer_len]; //Len = 1
         sr_buf_t sr_outputs[sr_io::output_buffer_len]; //Len = 2
         sr_buf_t commanded_outputs[sr_io::output_buffer_len]; //Len = 2
+        uint16_t reserved1;
         pumps::params_t pump_params;
-        motor_params_t motor_params[MY_PUMPS_MAX];
-        motor_reg_t motor_regs[MY_PUMPS_MAX];
-        float commanded_motor_rate[MY_PUMPS_MAX];
+        motor_params_t motor_params[MY_PUMPS_NUM];
+        motor_reg_t motor_regs[MY_PUMPS_NUM];
+        float commanded_motor_rate[MY_PUMPS_NUM];
     };
     const size_t length = sizeof(reg_t) / sizeof(uint16_t);
 
@@ -72,7 +74,7 @@ namespace mb_regs
                 //.u8id = 1,
                 .EN_Port = NULL,
                 .u16regs = GET_MB_REGS_PTR(MY_MB_USB),
-                .u16timeOut = 300,
+                .u16timeOut = 1000,
                 .u16regsize = length,
                 .xTypeHW = mb_hardware_t::USB_CDC_HW
             }
@@ -82,6 +84,54 @@ namespace mb_regs
     static bool remote_enable = false;
     static SemaphoreHandle_t set_mutex = NULL;
     static uint16_t status_double_buffer = 0;
+
+    void receive_callback(uint8_t* data, uint32_t* length)
+    {
+        printf(">RX+%lu\n", *length);
+    }
+    void transmit_callback(uint8_t* data, uint32_t length)
+    {
+        printf(">TX+%lu\n", length);
+    }
+    void print_dbg(bool install_callbacks)
+    {
+        static bool callback_registered = false;
+
+        if (callback_registered != install_callbacks)
+        {
+            CDC_Register_RX_Callback(install_callbacks ? receive_callback : modbus_cdc_rx_callback);
+            CDC_Register_TX_Callback(install_callbacks ? transmit_callback : NULL);
+            callback_registered = install_callbacks;
+        }
+        printf("\tCDC connected = %hu\n"
+            "\tCDC can transmit = %hu\n"
+            "\tRX callback installed = %u\n",
+            CDC_IsConnected(),
+            CDC_Can_Transmit(),
+            callback_registered
+        );
+        for (size_t i = 0; i < array_size(instances); i++)
+        {
+            auto& c = instances[i].cfg;
+            printf("\t#%u:\n"
+                "\t\tErr count = %u\n"
+                "\t\tLast err = %hi\n"
+                "\t\tIn count = %u\n"
+                "\t\tOut count = %u\n"
+                "\t\tState = %hi\n"
+                "\t\tBuffer len = %hu\n"
+                "\t\tAddress mismatch cnt = %u\n",
+                i,
+                c.u16errCnt,
+                c.i8lastError,
+                c.u16InCnt,
+                c.u16OutCnt,
+                c.i8state,
+                c.u8BufferSize,
+                c.addrMissmatchCnt
+            );
+        }
+    }
 
     void sync_instance(reg_t* p, osSemaphoreId_t mb_sem)
     {
@@ -104,45 +154,53 @@ namespace mb_regs
         COPY_OUTPUT_STRUCTS(motor_regs, p->motor_regs);
 
         /** INPUT **/
-        if (!remote_enable) return;
-        if ((p->interface_active & (1u << interface_activity_bits::receive)) == 0) return;
-
-        if (CHECK_ACTIVITY_BIT(interface_activity_bits::reset))
+        if (remote_enable && ((p->interface_active & (1u << interface_activity_bits::receive)) == 0))
         {
-            vTaskDelay(pdMS_TO_TICKS(100));
-            HAL_NVIC_SystemReset();
+            if (CHECK_ACTIVITY_BIT(interface_activity_bits::reset))
+            {
+                vTaskDelay(pdMS_TO_TICKS(100));
+                HAL_NVIC_SystemReset();
+            }
+
+            //Parameters are only modified if reload bit is set
+            //Otherwise only IO and pump setpoints are tracked
+            if (CHECK_ACTIVITY_BIT(interface_activity_bits::reload))
+            {
+                //Modbus address
+                *mb_addr = p->addr;
+                //Pump config
+                auto motor_params = nvs::get_motor_params();
+                COPY_INPUT_STRUCTS(p->motor_params, motor_params);
+                *nvs::get_pump_params() = p->pump_params;
+
+                pumps::reload_params();
+                pumps::reload_motor_params();
+                RESET_BIT(p->interface_active, interface_activity_bits::reload);
+            }
+
+            //Commanded GPIO
+            //TODO
+
+            //Pump commanded values
+            for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+            {
+                pumps::set_indicated_speed(i, p->commanded_motor_rate[i]);
+            }
+
+            //NVS save bit
+            if (CHECK_ACTIVITY_BIT(interface_activity_bits::save_nvs))
+            {
+                nvs::save();
+                RESET_BIT(p->interface_active, interface_activity_bits::save_nvs);
+            }
         }
-
-        //Parameters are only modified if reload bit is set
-        //Otherwise only IO and pump setpoints are tracked
-        if (CHECK_ACTIVITY_BIT(interface_activity_bits::reload))
+        else
         {
-            //Modbus address
-            *mb_addr = p->addr;
-            //Pump config
+            //Update all params so that hosts can at least receive them if remote is not enabled
+            p->addr = *mb_addr;
+            p->pump_params = *nvs::get_pump_params();
             auto motor_params = nvs::get_motor_params();
-            COPY_INPUT_STRUCTS(p->motor_params, motor_params);
-            *nvs::get_pump_params() = p->pump_params;
-
-            pumps::reload_params();
-            pumps::reload_motor_params();
-            RESET_BIT(p->interface_active, interface_activity_bits::reload);
-        }
-
-        //Commanded GPIO
-        //TODO
-
-        //Pump commanded values
-        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
-        {
-            pumps::set_indicated_speed(i, p->commanded_motor_rate[i]);
-        }
-
-        //NVS save bit
-        if (CHECK_ACTIVITY_BIT(interface_activity_bits::save_nvs))
-        {
-            nvs::save();
-            RESET_BIT(p->interface_active, interface_activity_bits::save_nvs);
+            COPY_OUTPUT_STRUCTS(motor_params, p->motor_params);
         }
     }
 
@@ -155,6 +213,7 @@ namespace mb_regs
         set_mutex = xSemaphoreCreateMutex();
         assert_param(set_mutex);
         mb_addr = addr;
+        CDC_Register_RX_Callback(modbus_cdc_rx_callback);
         for (auto &&i : instances)
         {
             i.p->addr = *addr;

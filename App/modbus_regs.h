@@ -15,4 +15,5 @@ namespace mb_regs
 
     HAL_StatusTypeDef set_remote(bool enable);
     HAL_StatusTypeDef set_status(uint16_t s);
+    void print_dbg(bool install_callbacks);
 } // namespace mb_regs

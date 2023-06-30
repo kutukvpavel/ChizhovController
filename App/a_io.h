@@ -13,7 +13,7 @@ namespace a_io
 
         LEN
     };
-    struct cal_t
+    struct PACKED_FOR_MODBUS cal_t
     {
         float k = 1;
         float b = 0;
