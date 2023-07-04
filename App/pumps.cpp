@@ -40,9 +40,12 @@ namespace pumps
     };
     static const params_t* params;
     static bool enable = false;
+    static uint32_t consistent_overload_counter[MY_PUMPS_MAX] = {};
+    static motor_reg_t* motor_regs;
 
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
+        motor_regs = mr;
         params = p;
         set_enable(false);
         for (size_t i = 0; i < array_size(motors); i++)
@@ -115,7 +118,8 @@ namespace pumps
 
     bool get_running(size_t i)
     {
-        return enable && (!motors[i]->get_paused()) && (motors[i]->get_volume_rate() > __FLT_EPSILON__);
+        return enable && (!motors[i]->get_paused()) && (motors[i]->get_volume_rate() > __FLT_EPSILON__)
+            && (!motors[i]->get_missing());
     }
     float get_indicated_speed(size_t i)
     {
@@ -173,5 +177,46 @@ namespace pumps
     {
         assert_param(i < MY_PUMPS_NUM);
         motors[i]->set_paused(v);
+    }
+    bool get_consistent_overload()
+    {
+        const uint32_t threshold = 10;
+        const uint32_t delay_ticks = pdMS_TO_TICKS(100);
+        static TickType_t last = configINITIAL_TICK_COUNT;
+
+        TickType_t now = xTaskGetTickCount();
+        bool res = false;
+        if ((now - last) > delay_ticks)
+        {
+            last = now;
+            for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+            {
+                if (motors[i]->get_overload()) consistent_overload_counter[i]++;
+                else consistent_overload_counter[i] = 0;
+                if (consistent_overload_counter[i] > threshold) res = true;
+            }
+        }
+        return res;
+    }
+    void reset_consistent_overload()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            consistent_overload_counter[i] = 0;
+        }
+    }
+    void reload_motor_regs()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            set_indicated_speed(i, motor_regs[i].volume_rate);    
+        }
+    }
+    void stop_all()
+    {
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            set_indicated_speed(i, 0);
+        }
     }
 } // namespace pumps

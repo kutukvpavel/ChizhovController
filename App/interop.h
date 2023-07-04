@@ -6,7 +6,8 @@ namespace interop
 {
     enum class cmds
     {
-        lamp_test_dbg
+        lamp_test_dbg,
+        modbus_keepalive_failed
     };
     struct cmd_t
     {

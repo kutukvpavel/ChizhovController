@@ -25,13 +25,6 @@ struct PACKED_FOR_MODBUS motor_reg_t
 
 class motor_t
 {
-    enum status_bits : uint16_t
-    {
-        missing = 0,
-        overload,
-        paused
-    };
-
 private:
     TIM_HandleTypeDef* timer;
     uint32_t timer_channel;
@@ -43,6 +36,14 @@ private:
     motor_reg_t* reg;
     SemaphoreHandle_t params_mutex = NULL;
 public:
+    enum status_bits : uint16_t
+    {
+        missing = 0,
+        overload,
+        paused,
+        running
+    };
+
     motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
     ~motor_t();
 

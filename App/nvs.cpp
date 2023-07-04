@@ -7,7 +7,7 @@
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
 #define MY_NVS_VER_ADDR 0u
 #define MY_NVS_START_ADDRESS 8u
-#define MY_NVS_VERSION 2u
+#define MY_NVS_VERSION 3u
 #define MY_NVS_PAGE_SIZE 8u
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
@@ -24,6 +24,7 @@ namespace nvs
         uint16_t modbus_id;
         sr_buf_t input_invert[sr_io::input_buffer_len];
         a_io::cal_t analog_cal[a_io::in::LEN];
+        uint16_t modbus_keepalive_threshold;
     };
     static storage_t storage = {
         .pump_params = {
@@ -78,7 +79,8 @@ namespace nvs
         },
         .modbus_id = 1,
         .input_invert = { (1u << sr_io::in::IN2) }, //Invert Stop button (NC)
-        .analog_cal = {}
+        .analog_cal = {},
+        .modbus_keepalive_threshold = 5 //seconds
     };
 
     static uint8_t nvs_ver = 0;
@@ -194,6 +196,16 @@ namespace nvs
         save();
         return res;
     }
+    HAL_StatusTypeDef load_motor_regs()
+    {
+        HAL_StatusTypeDef ret;
+        DBG("Loading motor regs from NVS...");
+
+        if (nvs_ver != MY_NVS_VERSION) return HAL_ERROR;
+        if ((ret = eeprom_read(MY_NVS_START_ADDRESS + offsetof(storage_t, storage_t::motor_regs),
+            reinterpret_cast<uint8_t*>(&(storage.motor_regs[0])), sizeof(storage_t::motor_regs))) != HAL_OK) return ret;
+        return HAL_OK;
+    }
 
     uint8_t get_stored_version()
     {
@@ -230,5 +242,9 @@ namespace nvs
     a_io::cal_t* get_analog_cal()
     {
         return storage.analog_cal;
+    }
+    uint16_t* get_modbus_keepalive_threshold()
+    {
+        return &storage.modbus_keepalive_threshold;
     }
 } // namespace nvs

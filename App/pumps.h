@@ -39,4 +39,8 @@ namespace pumps
     bool get_overload(size_t i);
     bool get_paused(size_t i);
     void set_paused(size_t i, bool v);
+    bool get_consistent_overload();
+    void reset_consistent_overload();
+    void reload_motor_regs();
+    void stop_all();
 } // namespace pumps

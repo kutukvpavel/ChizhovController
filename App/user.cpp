@@ -169,16 +169,32 @@ void app_main(wdt::task_t* pwdt)
     switch (state)
     {
     case states::init:
+    {
+        static const TickType_t auto_mode_threshold = pdMS_TO_TICKS(2000);
+        static TickType_t start_pressed = configINITIAL_TICK_COUNT;
+
         led = led_states::INIT;
         //Here we wait until the user pushes start button
         front_panel::set_light(front_panel::l_start, front_panel::l_state::blink);
         if (supervize_manual_edit()) edit_invoked = true; //Allow to pre-set motor speed before turning on
         if (front_panel::get_button(front_panel::b_start))
         {
+            start_pressed = xTaskGetTickCount();
             front_panel::clear_lights();
-            WAIT_ON_BTN(front_panel::b_start);
+            bool jump_to_auto = false;
+            while (front_panel::get_button(front_panel::b_start))
+            {
+                vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms));
+                pwdt->last_time = xTaskGetTickCount();
+                if ((pwdt->last_time - start_pressed) > auto_mode_threshold)
+                {
+                    jump_to_auto = true;
+                    front_panel::set_light(front_panel::l_automatic_mode, front_panel::l_state::on);
+                }
+            }
+            if (jump_to_auto && !mb_regs::any_remote_ready()) pumps::stop_all();
             pumps::switch_hw_interlock();
-            state = states::manual;
+            state = jump_to_auto ? states::automatic : states::manual;
         }
         if (front_panel::get_button(front_panel::b_light_test))
         {
@@ -187,7 +203,7 @@ void app_main(wdt::task_t* pwdt)
             state = states::lamp_test;
         }
         break;
-
+    }
     case states::manual:
         led = led_states::HEARTBEAT;
         front_panel::set_light(front_panel::l_start, front_panel::l_state::on);
@@ -202,24 +218,35 @@ void app_main(wdt::task_t* pwdt)
         {
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
-            if (nvs::get_version_match() && edit_invoked) nvs::save();
+            if (nvs::get_version_match() && edit_invoked) 
+            {
+                HAL_StatusTypeDef r = nvs::save();
+                if (r != HAL_OK) ERR("Failed to save NVS: %u", r);
+            }
             edit_invoked = false;
             state = states::init;
         }
         break;
 
     case states::automatic:
+    {
+        static const void* dummy_ptr = NULL;
+
         led = led_states::COMMUNICATION;
         front_panel::set_light(front_panel::l_automatic_mode, front_panel::l_state::on);
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::on);
-        if (front_panel::get_button(front_panel::b_stop))
+        if (front_panel::get_button(front_panel::b_stop) || 
+            (interop::try_receive(interop::cmds::modbus_keepalive_failed, &dummy_ptr) == HAL_OK))
         {
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
-            state = states::manual;
+            pumps::set_enable(false); //Set this early
+            if (nvs::get_version_match()) nvs::load_motor_regs();
+            pumps::reload_motor_regs();
+            state = states::init;
         }
         break;
-
+    }
     case states::emergency:
         led = led_states::ERROR;
         front_panel::set_light(front_panel::l_emergency, front_panel::l_state::on);
@@ -263,6 +290,12 @@ void app_main(wdt::task_t* pwdt)
     {
         front_panel::clear_lights();
         state = states::emergency;
+    }
+    if (pumps::get_consistent_overload())
+    {
+        front_panel::clear_lights();
+        state = states::emergency;
+        pumps::reset_consistent_overload();
     }
     mb_regs::set_remote(state == states::automatic);
     mb_regs::set_status(static_cast<uint16_t>(state));

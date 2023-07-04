@@ -8,6 +8,7 @@
 #include "task_handles.h"
 #include "wdt.h"
 #include "a_io.h"
+#include "interop.h"
 
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "usbd_cdc_if.h"
@@ -20,7 +21,7 @@
 #define GET_BUF(name) buffer_##name
 #define COPY_OUTPUT_STRUCTS(origin, dest) for (size_t ijk = 0; ijk < ARRAY_SIZE(dest); ijk++) dest[ijk] = origin[ijk]
 #define COPY_INPUT_STRUCTS(origin, dest) for (size_t ijk = 0; ijk < ARRAY_SIZE(origin); ijk++) dest[ijk] = origin[ijk]
-#define CHECK_ACTIVITY_BIT(bit) ((p->interface_active & (1u << (bit))) > 0)
+#define CHECK_ACTIVITY_BIT(bit) ((mb->p->interface_active & (1u << (bit))) > 0)
 #define RESET_BIT(src, idx) src &= ~(1u << (idx))
 
 namespace mb_regs
@@ -30,7 +31,8 @@ namespace mb_regs
         receive = 0,
         reload,
         save_nvs,
-        reset
+        reset,
+        keep_alive
     };
 
     struct PACKED_FOR_MODBUS reg_t
@@ -64,6 +66,8 @@ namespace mb_regs
     {
         reg_t* p;
         modbusHandler_t cfg;
+        TickType_t last_keepalive_check;
+        uint16_t keepalive_counter;
     };
     static instance_t instances[] = {
         { 
@@ -77,7 +81,9 @@ namespace mb_regs
                 .u16timeOut = 1000,
                 .u16regsize = length,
                 .xTypeHW = mb_hardware_t::USB_CDC_HW
-            }
+            },
+            .last_keepalive_check = configINITIAL_TICK_COUNT,
+            .keepalive_counter = 0
         }
     };
     static uint16_t* mb_addr;
@@ -120,7 +126,8 @@ namespace mb_regs
                 "\t\tOut count = %u\n"
                 "\t\tState = %hi\n"
                 "\t\tBuffer len = %hu\n"
-                "\t\tAddress mismatch cnt = %u\n",
+                "\t\tAddress mismatch cnt = %u\n"
+                "\t\tInterface act = %u\n",
                 i,
                 c.u16errCnt,
                 c.i8lastError,
@@ -128,38 +135,61 @@ namespace mb_regs
                 c.u16OutCnt,
                 c.i8state,
                 c.u8BufferSize,
-                c.addrMissmatchCnt
+                c.addrMissmatchCnt,
+                instances[i].p->interface_active
             );
         }
     }
 
-    void sync_instance(reg_t* p, osSemaphoreId_t mb_sem)
+    void sync_instance(instance_t* mb)
     {
         /** OUTPUT **/
         //Status
-        p->status = status_double_buffer;
+        mb->p->status = status_double_buffer;
 
         //MAX6675 sensors
         auto temps = thermo::get_temperatures();
-        COPY_OUTPUT_STRUCTS(temps, p->max6675_temps);
+        COPY_OUTPUT_STRUCTS(temps, mb->p->max6675_temps);
 
         //GPIO
         auto gpio = sr_io::get_inputs();
-        COPY_OUTPUT_STRUCTS(gpio, p->sr_inputs);
+        COPY_OUTPUT_STRUCTS(gpio, mb->p->sr_inputs);
         gpio = sr_io::get_outputs();
-        COPY_OUTPUT_STRUCTS(gpio, p->sr_outputs);
+        COPY_OUTPUT_STRUCTS(gpio, mb->p->sr_outputs);
 
         //Pump values
         auto motor_regs = nvs::get_motor_regs();
-        COPY_OUTPUT_STRUCTS(motor_regs, p->motor_regs);
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            if (pumps::get_running(i))
+                motor_regs[i].status |= (1u << motor_t::status_bits::running);
+            else
+                motor_regs[i].status &= ~(1u << motor_t::status_bits::running);
+        }
+        COPY_OUTPUT_STRUCTS(motor_regs, mb->p->motor_regs);
 
         /** INPUT **/
-        if (remote_enable && ((p->interface_active & (1u << interface_activity_bits::receive)) == 0))
+        if (remote_enable && ((mb->p->interface_active & (1u << interface_activity_bits::receive)) > 0))
         {
+            static const TickType_t keepalive_delay = pdMS_TO_TICKS(1000);
+
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::reset))
             {
                 vTaskDelay(pdMS_TO_TICKS(100));
                 HAL_NVIC_SystemReset();
+            }
+            TickType_t now = xTaskGetTickCount();
+            if ((now - mb->last_keepalive_check) > keepalive_delay)
+            {
+                mb->last_keepalive_check = now;
+                if (CHECK_ACTIVITY_BIT(interface_activity_bits::keep_alive)) mb->keepalive_counter = 0;
+                else mb->keepalive_counter++;
+                RESET_BIT(mb->p->interface_active, interface_activity_bits::keep_alive);
+                if (mb->keepalive_counter > *nvs::get_modbus_keepalive_threshold())
+                {
+                    RESET_BIT(mb->p->interface_active, interface_activity_bits::receive);
+                    interop::enqueue(interop::cmds::modbus_keepalive_failed, NULL);
+                }
             }
 
             //Parameters are only modified if reload bit is set
@@ -167,15 +197,15 @@ namespace mb_regs
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::reload))
             {
                 //Modbus address
-                *mb_addr = p->addr;
+                *mb_addr = mb->p->addr;
                 //Pump config
                 auto motor_params = nvs::get_motor_params();
-                COPY_INPUT_STRUCTS(p->motor_params, motor_params);
-                *nvs::get_pump_params() = p->pump_params;
+                COPY_INPUT_STRUCTS(mb->p->motor_params, motor_params);
+                *nvs::get_pump_params() = mb->p->pump_params;
 
                 pumps::reload_params();
                 pumps::reload_motor_params();
-                RESET_BIT(p->interface_active, interface_activity_bits::reload);
+                RESET_BIT(mb->p->interface_active, interface_activity_bits::reload);
             }
 
             //Commanded GPIO
@@ -184,23 +214,26 @@ namespace mb_regs
             //Pump commanded values
             for (size_t i = 0; i < MY_PUMPS_NUM; i++)
             {
-                pumps::set_indicated_speed(i, p->commanded_motor_rate[i]);
+                pumps::set_indicated_speed(i, mb->p->commanded_motor_rate[i]);
             }
 
             //NVS save bit
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::save_nvs))
             {
                 nvs::save();
-                RESET_BIT(p->interface_active, interface_activity_bits::save_nvs);
+                RESET_BIT(mb->p->interface_active, interface_activity_bits::save_nvs);
             }
         }
         else
         {
             //Update all params so that hosts can at least receive them if remote is not enabled
-            p->addr = *mb_addr;
-            p->pump_params = *nvs::get_pump_params();
+            mb->p->addr = *mb_addr;
+            mb->p->pump_params = *nvs::get_pump_params();
             auto motor_params = nvs::get_motor_params();
-            COPY_OUTPUT_STRUCTS(motor_params, p->motor_params);
+            COPY_OUTPUT_STRUCTS(motor_params, mb->p->motor_params);
+            RESET_BIT(mb->p->interface_active, interface_activity_bits::keep_alive);
+            mb->keepalive_counter = 0;
+            mb->last_keepalive_check = xTaskGetTickCount();
         }
     }
 
@@ -255,7 +288,7 @@ namespace mb_regs
         i = 0;
         for (auto &&j : instances)
         {
-            auto p = j.p;
+            instance_t* mb = &j;
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::receive)) i++;
         }
         if (i > 1)
@@ -265,9 +298,13 @@ namespace mb_regs
                 RESET_BIT(j.p->interface_active, interface_activity_bits::receive);
             }
         }
+        /*else if ((i == 0) && remote_enable) // All down
+        {
+            pumps::stop_all();
+        }*/
         for (auto &&j : instances)
         {
-            sync_instance(j.p, j.cfg.ModBusSphrHandle);
+            sync_instance(&j);
         }
 
         xSemaphoreGive(set_mutex);
@@ -293,6 +330,15 @@ namespace mb_regs
         status_double_buffer = s;
         xSemaphoreGive(set_mutex);
         return HAL_OK;
+    }
+    bool any_remote_ready()
+    {
+        for (auto &&i : instances)
+        {
+            instance_t* mb = &i;
+            if (CHECK_ACTIVITY_BIT(interface_activity_bits::receive)) return true;
+        }
+        return false;
     }
 } // namespace mb_regs
 

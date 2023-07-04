@@ -213,6 +213,14 @@ namespace cli_commands
         );
         return 0;
     }
+    uint8_t set_modbus_keepalive(int argc, char** argv)
+    {
+        if (argc < 2) return 1;
+        uint16_t v;
+        if (sscanf(argv[1], "%hu", &v) != 1) return 2;
+        *nvs::get_modbus_keepalive_threshold() = v;
+        return 0;
+    }
 
     uint8_t get_coproc_err_rate(int argc, char** argv)
     {
@@ -325,6 +333,8 @@ void init()
     CLI_ADD_CMD("nvs_test", "Test EEPROM readback, performs sequential number write and read, and does nvs_save afterwards",
         &cli_commands::nvs_test);
     CLI_ADD_CMD("nvs_report", "Report NVS contents in human-readable format", &cli_commands::nvs_report);
+    CLI_ADD_CMD("set_modbus_keepalive", "Set modbus keep alive timeout threshold (seconds). Expects a uint16_t.",
+        &cli_commands::set_modbus_keepalive);
 
     CLI_ADD_CMD("get_coproc_err_rate", "Print coprocessor CRC error count since boot",
         &cli_commands::get_coproc_err_rate);

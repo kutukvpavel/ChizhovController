@@ -13,6 +13,7 @@ namespace nvs
     HAL_StatusTypeDef reset();
     void dump_hex();
     HAL_StatusTypeDef test();
+    HAL_StatusTypeDef load_motor_regs();
 
     uint8_t get_stored_version();
     uint8_t get_required_version();
@@ -23,4 +24,5 @@ namespace nvs
     uint16_t* get_modbus_addr();
     sr_buf_t* get_input_inversion();
     a_io::cal_t* get_analog_cal();
+    uint16_t* get_modbus_keepalive_threshold();
 } // namespace nvs
