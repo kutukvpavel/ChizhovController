@@ -43,6 +43,7 @@ App/ushell/src/sys_command_line.c \
 App/ushell/src/sys_queue.c \
 Core/Src/adc.c \
 Core/Src/crc.c \
+Core/Src/dfu.c \
 Core/Src/dma.c \
 Core/Src/freertos.c \
 Core/Src/gpio.c \

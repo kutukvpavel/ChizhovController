@@ -34,6 +34,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include <stdio.h>
+#include "dfu.h"
 #include "../App/ushell/inc/sys_command_line.h"
 /* USER CODE END Includes */
 
@@ -76,7 +77,12 @@ void MX_FREERTOS_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+  if (LL_RCC_IsActiveFlag_WWDGRST())
+  {
+    LL_RCC_ClearResetFlags();
+    __HAL_RCC_WWDG_CLK_DISABLE();
+    dfu_jump_to_bootloader();
+  }
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -92,7 +98,11 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
+  /*if (is_reset_persistent_flag_set(RESET_DFU_REQUESTED))
+  {
+    set_reset_persistent_flag(RESET_DFU_REQUESTED, 0);
+    dfu_jump_to_bootloader(); //Never returns
+  }*/
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */

@@ -9,6 +9,7 @@
 #include "wdt.h"
 #include "a_io.h"
 #include "interop.h"
+#include "../Core/Inc/dfu.h"
 
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "usbd_cdc_if.h"
@@ -32,7 +33,9 @@ namespace mb_regs
         reload,
         save_nvs,
         reset,
-        keep_alive
+        keep_alive,
+        reserved1,
+        firmware_upgrade
     };
 
     struct PACKED_FOR_MODBUS reg_t
@@ -169,15 +172,23 @@ namespace mb_regs
         COPY_OUTPUT_STRUCTS(motor_regs, mb->p->motor_regs);
 
         /** INPUT **/
-        if (remote_enable && ((mb->p->interface_active & (1u << interface_activity_bits::receive)) > 0))
+        if ((mb->p->interface_active & (1u << interface_activity_bits::receive)) > 0)
         {
             static const TickType_t keepalive_delay = pdMS_TO_TICKS(1000);
 
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::reset))
             {
-                vTaskDelay(pdMS_TO_TICKS(100));
-                HAL_NVIC_SystemReset();
+                vTaskDelay(pdMS_TO_TICKS(500));
+                HAL_NVIC_SystemReset(); //No return
             }
+            if (CHECK_ACTIVITY_BIT(interface_activity_bits::firmware_upgrade))
+            {
+                DBG("DFU mode remote request");
+                vTaskDelay(pdMS_TO_TICKS(500)); //Allow software to close the serial port before the device is reset
+                dfu_perform_wwdg_reset(); //No return
+            }
+
+            if (!remote_enable) return;
             TickType_t now = xTaskGetTickCount();
             if ((now - mb->last_keepalive_check) > keepalive_delay)
             {
