@@ -10,9 +10,12 @@
 #include "a_io.h"
 #include "interop.h"
 #include "../Core/Inc/dfu.h"
+#include "../Core/Inc/usart.h"
 
 #include "modbus/MODBUS-LIB/Inc/Modbus.h"
 #include "usbd_cdc_if.h"
+
+#define MY_MODBUS_UART_PORT (&huart2)
 
 #ifndef ARRAY_SIZE
     #define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
@@ -24,6 +27,10 @@
 #define COPY_INPUT_STRUCTS(origin, dest) for (size_t ijk = 0; ijk < ARRAY_SIZE(origin); ijk++) dest[ijk] = origin[ijk]
 #define CHECK_ACTIVITY_BIT(bit) ((mb->p->interface_active & (1u << (bit))) > 0)
 #define RESET_BIT(src, idx) src &= ~(1u << (idx))
+
+_BEGIN_STD_C
+void uart_install_callbacks(void (*rx)(UART_HandleTypeDef*), void (*tx)(UART_HandleTypeDef*));
+_END_STD_C
 
 namespace mb_regs
 {
@@ -64,6 +71,7 @@ namespace mb_regs
     const size_t length = sizeof(reg_t) / sizeof(uint16_t);
 
     DEFINE_REGS(MY_MB_USB);
+    DEFINE_REGS(MY_MB_RS485);
 
     struct instance_t
     {
@@ -81,9 +89,24 @@ namespace mb_regs
                 //.u8id = 1,
                 .EN_Port = NULL,
                 .u16regs = GET_MB_REGS_PTR(MY_MB_USB),
-                .u16timeOut = 1000,
+                .u16timeOut = 500,
                 .u16regsize = length,
                 .xTypeHW = mb_hardware_t::USB_CDC_HW
+            },
+            .last_keepalive_check = configINITIAL_TICK_COUNT,
+            .keepalive_counter = 0
+        },
+        {
+            .p = &GET_BUF(MY_MB_RS485), 
+            .cfg = {
+                .uModbusType = MB_SLAVE,
+                .port = MY_MODBUS_UART_PORT,
+                //.u8id = 1,
+                .EN_Port = NULL,
+                .u16regs = GET_MB_REGS_PTR(MY_MB_RS485),
+                .u16timeOut = 500,
+                .u16regsize = length,
+                .xTypeHW = mb_hardware_t::USART_HW
             },
             .last_keepalive_check = configINITIAL_TICK_COUNT,
             .keepalive_counter = 0
@@ -94,13 +117,21 @@ namespace mb_regs
     static SemaphoreHandle_t set_mutex = NULL;
     static uint16_t status_double_buffer = 0;
 
-    void receive_callback(uint8_t* data, uint32_t* length)
+    void receive_cdc_callback(uint8_t* data, uint32_t* length)
     {
         printf(">RX+%lu\n", *length);
     }
-    void transmit_callback(uint8_t* data, uint32_t length)
+    void transmit_cdc_callback(uint8_t* data, uint32_t length)
     {
         printf(">TX+%lu\n", length);
+    }
+    void receive_uart_callback(UART_HandleTypeDef* huart)
+    {
+        if (huart == &huart2) puts(">RX");
+    }
+    void transmit_uart_callback(UART_HandleTypeDef* huart)
+    {
+        if (huart == &huart2) puts(">TX");
     }
     void print_dbg(bool install_callbacks)
     {
@@ -108,8 +139,12 @@ namespace mb_regs
 
         if (callback_registered != install_callbacks)
         {
-            CDC_Register_RX_Callback(install_callbacks ? receive_callback : modbus_cdc_rx_callback);
-            CDC_Register_TX_Callback(install_callbacks ? transmit_callback : NULL);
+            CDC_Register_RX_Callback(install_callbacks ? receive_cdc_callback : modbus_cdc_rx_callback);
+            CDC_Register_TX_Callback(install_callbacks ? transmit_cdc_callback : NULL);
+            uart_install_callbacks(
+                install_callbacks ? receive_uart_callback : NULL,
+                install_callbacks ? transmit_uart_callback : NULL
+            );
             callback_registered = install_callbacks;
         }
         printf("\tCDC connected = %hu\n"
@@ -142,6 +177,14 @@ namespace mb_regs
                 instances[i].p->interface_active
             );
         }
+    }
+    void send_dbg_rs485()
+    {
+#ifdef MY_MB_RS485
+        static const char payload[] = "TEST\n";
+
+        HAL_UART_Transmit(MY_MODBUS_UART_PORT, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 500);
+#endif
     }
 
     void sync_instance(instance_t* mb)
@@ -265,10 +308,12 @@ namespace mb_regs
             ModbusInit(&(i.cfg));
         }
         ModbusStartCDC(&(instances[MY_MB_USB].cfg));
+        DBG("\tStarted modbus on USB CDC");
         for (size_t i = 0; i < array_size(instances); i++)
         {
             if (i == MY_MB_USB) continue;
             ModbusStart(&(instances[i].cfg));
+            DBG("\tStarted modbus instance #%u", i);
         }
         return set_mutex ? HAL_OK : HAL_ERROR;
     }

@@ -311,6 +311,11 @@ namespace cli_commands
         mb_regs::print_dbg(install);
         return 0;
     }
+    uint8_t modbus_rs485_test(int argc, char** argv)
+    {
+        mb_regs::send_dbg_rs485();
+        return 0;
+    }
 
     uint8_t dfu(int argc, char** argv)
     {
@@ -365,6 +370,7 @@ void init()
         "Report modbus error info and install/remove CDC receive callback into this console (toggle). "
         "Single arg > 0 => install, ==0 => remove. No args = just print.",
         &cli_commands::modbus_report);
+    CLI_ADD_CMD("modbus_rs485_test", "Send test string over RS485 to test RTS signaling", &cli_commands::modbus_rs485_test);
 
     CLI_ADD_CMD("dfu", "Enter DFU mode. Hard reset is required to exit form it.", &cli_commands::dfu);
 }
