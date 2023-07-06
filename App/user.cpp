@@ -261,19 +261,13 @@ void app_main(wdt::task_t* pwdt)
 
     case states::lamp_test:
     {
-        static display::test_modes mode = display::test_modes::all_lit;
-
         led = led_states::COMMUNICATION;
         front_panel::test();
-        display::set_lamp_test_mode(mode);
+        display::set_lamp_test_mode(display::test_modes::all_lit);
         if (!front_panel::get_button(front_panel::b_light_test))
         {
             front_panel::clear_lights();
-            //WAIT_ON_BTN(front_panel::b_light_test);
-            mode = static_cast<display::test_modes>((mode + 1) % display::test_modes::TST_LEN);
-            if (mode == display::test_modes::none) mode = display::test_modes::all_lit;
             display::set_lamp_test_mode(display::test_modes::none);
-            DBG("Next LT mode = #%u", mode);
             vTaskDelay(pdMS_TO_TICKS(50));
             state = states::init;
         }

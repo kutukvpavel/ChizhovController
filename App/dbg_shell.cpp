@@ -13,6 +13,7 @@
 #include "thermo.h"
 #include "interop.h"
 #include "modbus_regs.h"
+#include "display.h"
 #include "../Core/Inc/dfu.h"
 
 static void init();
@@ -286,7 +287,7 @@ namespace cli_commands
         return 0;
     }
 
-    uint8_t lamp_test(int argc, char** argv)
+    uint8_t lamp_test_custom(int argc, char** argv)
     {
         static uint8_t pattern;
         uint16_t buf;
@@ -295,7 +296,24 @@ namespace cli_commands
         if (sscanf(argv[1], "%hx", &buf) != 1) return 2;
         pattern = static_cast<uint8_t>(buf & 0xFF);
         printf("\tInitialing lamp test interop with pattern = 0x%hX\n", pattern);
-        HAL_StatusTypeDef ret = interop::enqueue(interop::cmds::lamp_test_dbg, &pattern);
+        HAL_StatusTypeDef ret = interop::enqueue(interop::cmds::lamp_test_custom, &pattern);
+        if (ret == HAL_OK) return 0;
+        return ret + 2;
+    }
+    uint8_t lamp_test_predef(int argc, char** argv)
+    {
+        static display::test_modes m = display::test_modes::digits;
+
+        if (argc > 1)
+        {
+            if (sscanf(argv[1], "%hu", &m) != 1) return 2;
+            if (m >= display::test_modes::TST_LEN) 
+            {
+                m = display::test_modes::digits;
+                return 2;
+            }
+        }
+        HAL_StatusTypeDef ret = interop::enqueue(interop::cmds::lamp_test_predefined, &m);
         if (ret == HAL_OK) return 0;
         return ret + 2;
     }
@@ -364,7 +382,10 @@ void init()
         "N>2 args = N inv register words in hex without 0x (number of words is printed with no args given)",
         &cli_commands::input_invert);
 
-    CLI_ADD_CMD("lamp_test", "Invoke display lamp test interop. Expects 1 arg: byte pattern.", &cli_commands::lamp_test);
+    CLI_ADD_CMD("lamp_test_custom", "Invoke display lamp test interop. Expects 1 arg: byte pattern.",
+        &cli_commands::lamp_test_custom);
+    CLI_ADD_CMD("lamp_test_predef", "Invoke display lamp test interop. Argument (optional): uint8_t pattern index.",
+        &cli_commands::lamp_test_predef);
 
     CLI_ADD_CMD("modbus_report", 
         "Report modbus error info and install/remove CDC receive callback into this console (toggle). "

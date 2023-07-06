@@ -5,7 +5,7 @@
 
 namespace display
 {
-    enum test_modes
+    enum test_modes : uint8_t
     {
         none,
         all_lit,

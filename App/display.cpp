@@ -154,13 +154,18 @@ namespace display
         static bool interop_running = false;
         static_assert(DISPLAY_CHANNELS <= MY_PUMPS_NUM);
 
+        const uint8_t* p;
         test_modes m = mode; //double-buffer this var
+        if (interop::try_receive(interop::cmds::lamp_test_predefined, reinterpret_cast<const void**>(&p)) == HAL_OK)
+        {
+            m = static_cast<display::test_modes>(*p);
+            mode = m;
+        }
         if (m == test_modes::none)
         {
             static uint8_t byte_pattern;
-            const uint8_t* p;
             bool have_new_interop = 
-                (interop::try_receive(interop::cmds::lamp_test_dbg, reinterpret_cast<const void**>(&p)) == HAL_OK);
+                (interop::try_receive(interop::cmds::lamp_test_custom, reinterpret_cast<const void**>(&p)) == HAL_OK);
             if (have_new_interop) 
             {
                 assert_param(p);
