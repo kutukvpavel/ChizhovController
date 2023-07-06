@@ -306,7 +306,7 @@ namespace cli_commands
 
         if (argc > 1)
         {
-            if (sscanf(argv[1], "%hu", &m) != 1) return 2;
+            if (sscanf(argv[1], SCNu8, reinterpret_cast<uint8_t*>(&m)) != 1) return 2;
             if (m >= display::test_modes::TST_LEN) 
             {
                 m = display::test_modes::digits;

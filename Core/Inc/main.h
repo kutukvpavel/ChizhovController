@@ -72,6 +72,8 @@ void Error_Handler(void);
 #define Onboard_LED_GPIO_Port GPIOC
 #define CS_MUX_B_Pin LL_GPIO_PIN_0
 #define CS_MUX_B_GPIO_Port GPIOA
+#define USART2_DE_Pin LL_GPIO_PIN_1
+#define USART2_DE_GPIO_Port GPIOA
 #define IN_D_Pin LL_GPIO_PIN_4
 #define IN_D_GPIO_Port GPIOA
 #define CS_MUX_A_Pin LL_GPIO_PIN_2

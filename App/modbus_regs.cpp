@@ -102,7 +102,8 @@ namespace mb_regs
                 .uModbusType = MB_SLAVE,
                 .port = MY_MODBUS_UART_PORT,
                 //.u8id = 1,
-                .EN_Port = NULL,
+                .EN_Port = USART2_DE_GPIO_Port,
+                .EN_Pin = USART2_DE_Pin,
                 .u16regs = GET_MB_REGS_PTR(MY_MB_RS485),
                 .u16timeOut = 500,
                 .u16regsize = length,
@@ -183,7 +184,9 @@ namespace mb_regs
 #ifdef MY_MB_RS485
         static const char payload[] = "TEST\n";
 
+        LL_GPIO_SetOutputPin(USART2_DE_GPIO_Port, USART2_DE_Pin);
         HAL_UART_Transmit(MY_MODBUS_UART_PORT, reinterpret_cast<const uint8_t*>(payload), sizeof(payload), 500);
+        LL_GPIO_ResetOutputPin(USART2_DE_GPIO_Port, USART2_DE_Pin);
 #endif
     }
 
