@@ -14,6 +14,7 @@
 #include "interop.h"
 #include "modbus_regs.h"
 #include "display.h"
+#include "ethernet.h"
 #include "../Core/Inc/dfu.h"
 
 static void init();
@@ -141,7 +142,41 @@ namespace cli_commands
     }
     uint8_t os_report(int argc, char** argv)
     {
+#if configUSE_TRACE_FACILITY
+        static const TaskHandle_t* tasks[] =
+        {
+            &STATIC_TASK_HANDLE(MY_ADC),
+            &STATIC_TASK_HANDLE(MY_COPROC),
+            &STATIC_TASK_HANDLE(MY_IO),
+            &STATIC_TASK_HANDLE(MY_THERMO),
+            &STATIC_TASK_HANDLE(MY_DISP),
+            &STATIC_TASK_HANDLE(MY_CLI),
+            &STATIC_TASK_HANDLE(MY_MODBUS),
+            &STATIC_TASK_HANDLE(MY_FP),
+            &STATIC_TASK_HANDLE(MY_ETH),
+            &STATIC_TASK_HANDLE(MY_WDT)
+        };
+
         printf("\tMinimum ever free heap = %u\n", xPortGetMinimumEverFreeHeapSize());
+        for (size_t i = 0; i < array_size(tasks); i++)
+        {
+            TaskStatus_t details;
+            vTaskGetInfo(*(tasks[i]), &details, pdTRUE, eRunning);
+            printf("\tTask %s:\n"
+                "\t\tStack high water mark = %hu\n",
+                details.pcTaskName,
+                details.usStackHighWaterMark
+            );
+        }
+        return 0;
+#else
+        puts("FreeRTOS trace facility is disabled for release builds.");
+        return 1;
+#endif
+    }
+    uint8_t eth_report(int argc, char** argv)
+    {
+        eth::print_dbg();
         return 0;
     }
 
@@ -360,6 +395,7 @@ void init()
     CLI_ADD_CMD("pumps_report", "Report pump state", &cli_commands::pumps_report);
     CLI_ADD_CMD("pumps_debug", "Print pump debug info", &cli_commands::pumps_debug);
     CLI_ADD_CMD("os_report", "Report FreeRTOS stats", &cli_commands::os_report);
+    CLI_ADD_CMD("eth_report", "Report ethernet module stats", &cli_commands::eth_report);
 
     CLI_ADD_CMD("nvs_save", "Save current non-volatile data into EEPROM", &cli_commands::nvs_save);
     CLI_ADD_CMD("nvs_load", "Load non-volatile data from EEPROM", &cli_commands::nvs_load);

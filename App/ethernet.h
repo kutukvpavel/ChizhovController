@@ -4,5 +4,5 @@
 
 namespace eth
 {
-    
+    void print_dbg();
 } // namespace eth

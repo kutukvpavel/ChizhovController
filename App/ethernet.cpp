@@ -51,7 +51,7 @@ namespace eth
         W5500_WriteBuff(&byte, sizeof(byte));
     }
     void Callback_IPAssigned() {
-        DBG("Callback: IP assigned! Leased time: %d sec\r\n", getDHCPLeasetime());
+        DBG("Callback: IP assigned! Leased time: %lu sec\r\n", getDHCPLeasetime());
     }
     void Callback_IPConflict() {
         DBG("Callback: IP conflict!\r\n");
@@ -96,13 +96,18 @@ namespace eth
         getGWfromDHCP(net_info.gw);
         getSNfromDHCP(net_info.sn);
 
-        DBG("IP:  %d.%d.%d.%d\n\tGW:  %d.%d.%d.%d\n\tNet: %d.%d.%d.%d",
-                    net_info.ip[0], net_info.ip[1], net_info.ip[2], net_info.ip[3],
-                    net_info.gw[0], net_info.gw[1], net_info.gw[2], net_info.gw[3],
-                    net_info.sn[0], net_info.sn[1], net_info.sn[2], net_info.sn[3]);
+        DBG("IP obtained");
         wizchip_setnetinfo(&net_info);
 
         return HAL_OK;
+    }
+
+    void print_dbg()
+    {
+        printf("\tIP:  %d.%d.%d.%d\n\tGW:  %d.%d.%d.%d\n\tNet: %d.%d.%d.%d\n",
+                    net_info.ip[0], net_info.ip[1], net_info.ip[2], net_info.ip[3],
+                    net_info.gw[0], net_info.gw[1], net_info.gw[2], net_info.gw[3],
+                    net_info.sn[0], net_info.sn[1], net_info.sn[2], net_info.sn[3]);
     }
 } // namespace eth
 
