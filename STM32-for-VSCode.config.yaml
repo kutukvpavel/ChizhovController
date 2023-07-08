@@ -70,6 +70,7 @@ excludes:
   - "**/example/**"
   - "**_template.*"
   - "**/Doc/**"
+  - "**/FTPClient/**"
 
 
 # Include directories (directories containing .h or .hpp files)
@@ -98,6 +99,7 @@ sourceFiles:
   - Core/Src/**
   - Core/Lib/**
   - App/**
+  - Drivers/ioLib/**
 
 
 # When no makefile is present it will show a warning pop-up.

@@ -139,6 +139,11 @@ namespace cli_commands
         }
         return 0;
     }
+    uint8_t os_report(int argc, char** argv)
+    {
+        printf("\tMinimum ever free heap = %u\n", xPortGetMinimumEverFreeHeapSize());
+        return 0;
+    }
 
     uint8_t nvs_save(int argc, char** argv)
     {
@@ -354,6 +359,7 @@ void init()
     CLI_ADD_CMD("coproc_report", "Report coprocessor-controled devices' state", &cli_commands::coproc_report);
     CLI_ADD_CMD("pumps_report", "Report pump state", &cli_commands::pumps_report);
     CLI_ADD_CMD("pumps_debug", "Print pump debug info", &cli_commands::pumps_debug);
+    CLI_ADD_CMD("os_report", "Report FreeRTOS stats", &cli_commands::os_report);
 
     CLI_ADD_CMD("nvs_save", "Save current non-volatile data into EEPROM", &cli_commands::nvs_save);
     CLI_ADD_CMD("nvs_load", "Load non-volatile data from EEPROM", &cli_commands::nvs_load);
