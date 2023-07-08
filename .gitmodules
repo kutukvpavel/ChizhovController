@@ -7,3 +7,6 @@
 [submodule "App/average"]
 	path = App/average
 	url = https://github.com/kutukvpavel/average_lib.git
+[submodule "Drivers/ioLib"]
+	path = Drivers/ioLib
+	url = https://github.com/kutukvpavel/ioLibrary_Driver.git

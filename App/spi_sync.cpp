@@ -65,6 +65,16 @@ namespace spi
         xSemaphoreGiveRecursive(mutex_handle);
         return ret;
     }
+    HAL_StatusTypeDef transmit(uint8_t* buffer, uint16_t len)
+    {
+        assert_param(mutex_handle);
+        if (xSemaphoreTakeRecursive(mutex_handle, 0) != pdTRUE) return HAL_BUSY;
+
+        HAL_StatusTypeDef ret = HAL_SPI_Transmit(&hspi1, buffer, len, 10);
+
+        xSemaphoreGiveRecursive(mutex_handle);
+        return ret;
+    }
 
     HAL_StatusTypeDef release_bus()
     {

@@ -41,6 +41,7 @@ DEFINE_STATIC_TASK(MY_THERMO, 256);
 DEFINE_STATIC_TASK(MY_DISP, 1024);
 DEFINE_STATIC_TASK(MY_MODBUS, 1024);
 DEFINE_STATIC_TASK(MY_FP, 256);
+//DEFINE_STATIC_TASK(MY_ETH, 1024);
 DEFINE_STATIC_TASK(MY_WDT, 256);
 
 modbusHandler_t modbus;
@@ -91,6 +92,8 @@ void StartMainTask(void *argument)
     START_STATIC_TASK(MY_FP, 1, handle);
     HAL_IWDG_Refresh(&hiwdg);
     START_STATIC_TASK(MY_COPROC, 1, handle);
+    //HAL_IWDG_Refresh(&hiwdg);
+    //START_STATIC_TASK(MY_ETH, 1, handle);
     
     HAL_IWDG_Refresh(&hiwdg);
     vTaskDelay(pdMS_TO_TICKS(100));

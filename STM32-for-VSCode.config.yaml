@@ -84,6 +84,7 @@ includeDirectories:
   - Core/Src/**
   - Core/Lib/**
   - Middlewares/Third_Party/FreeRTOS/Source/include/**
+  - Drivers/ioLib/**
 
 
 # Files that should be included in the compilation.
