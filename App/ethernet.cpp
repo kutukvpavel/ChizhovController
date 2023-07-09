@@ -7,6 +7,7 @@
 #include "../Drivers/ioLib/Internet/DHCP/dhcp.h"
 
 #define W5500_SPI_INDEX 1
+#define EXPECTED_CHIP_VERSION 0x04
 
 #define DHCP_SOCKET     0
 #define DNS_SOCKET      1
@@ -19,6 +20,9 @@ namespace eth
     static wiz_NetInfo net_info = {
             .mac = {0xEA, 0x11, 0x22, 0x33, 0x44, 0xEA},
             .dhcp = NETINFO_DHCP};
+    static HAL_StatusTypeDef last_err = HAL_OK;
+    static uint32_t err_rate = 0;
+    static uint8_t chip_ver = 0x00;
 
     void enter_critical()
     {
@@ -64,8 +68,21 @@ namespace eth
         reg_wizchip_spi_cbfunc(W5500_ReadByte, W5500_WriteByte);
         reg_wizchip_spiburst_cbfunc(W5500_ReadBuff, W5500_WriteBuff);
 
+        wizchip_sw_reset();
+        vTaskDelay(pdMS_TO_TICKS(10));
+        chip_ver = getVERSIONR();
+        if (chip_ver != EXPECTED_CHIP_VERSION)
+        {
+            ERR("Unexpected WizNet chip ver = %hu, should be = %hu", chip_ver, EXPECTED_CHIP_VERSION);
+            return HAL_ERROR;
+        }
+
         uint8_t rx_tx_buff_sizes[] = {2, 2, 2, 2, 2, 2, 2, 2};
-        if (wizchip_init(rx_tx_buff_sizes, rx_tx_buff_sizes) != 0) return HAL_ERROR;
+        if (wizchip_init(rx_tx_buff_sizes, rx_tx_buff_sizes) != 0)
+        {
+            ERR("Failed to initialize WizNet chip");
+            return HAL_ERROR;
+        }
 
         // set MAC address before using DHCP
         setSHAR(net_info.mac);
@@ -78,7 +95,7 @@ namespace eth
         return HAL_OK;
     }
 
-    HAL_StatusTypeDef acquire_ip()
+    HAL_StatusTypeDef process_dhcp()
     {
         switch (DHCP_run())
         {
@@ -104,32 +121,62 @@ namespace eth
 
     void print_dbg()
     {
+        printf("\tChip ver = %hu\n"
+            "\tLast err = %u\n"
+            "\tErr rate = %lu\n",
+            chip_ver,
+            last_err,
+            err_rate
+        );
         printf("\tIP:  %d.%d.%d.%d\n\tGW:  %d.%d.%d.%d\n\tNet: %d.%d.%d.%d\n",
                     net_info.ip[0], net_info.ip[1], net_info.ip[2], net_info.ip[3],
                     net_info.gw[0], net_info.gw[1], net_info.gw[2], net_info.gw[3],
                     net_info.sn[0], net_info.sn[1], net_info.sn[2], net_info.sn[3]);
+    }
+    bool check_response(HAL_StatusTypeDef s)
+    {
+        if (s == HAL_OK) return true;
+        last_err = s;
+        err_rate++;
+        return false;
     }
 } // namespace eth
 
 _BEGIN_STD_C
 DECLARE_STATIC_TASK(MY_ETH)
 {
-    const uint32_t regular_delay = 100; //ms
-    const uint32_t missed_delay = 20;
-    static uint32_t delay = regular_delay;
+    const TickType_t delay = pdMS_TO_TICKS(50);
     static wdt::task_t* pwdt;
-
+    TickType_t last_wake = configINITIAL_TICK_COUNT;
+    HAL_StatusTypeDef ret;
     DBG("Ethernet init...");
-    eth::init();
-    DBG("\tEthernet init OK.");
+    ret = eth::init();
+    if (ret == HAL_OK)
+        DBG("\tEthernet init OK.");
+    else
+        ERR("\tEthernet init error: %u", ret);
     pwdt = wdt::register_task(2000, "ETH");
     INIT_NOTIFY(MY_ETH);
 
-    for (;;)
+    if (ret == HAL_OK)
     {
-        vTaskDelay(pdMS_TO_TICKS(delay));
-        eth::acquire_ip();
-        pwdt->last_time = xTaskGetTickCount();
+        for (;;)
+        {
+            vTaskDelayUntil(&last_wake, delay);
+            ret = eth::process_dhcp();
+            eth::check_response(ret);
+
+            pwdt->last_time = xTaskGetTickCount();
+            if ((last_wake + delay) <= pwdt->last_time) last_wake = pwdt->last_time;
+        }
+    }
+    else
+    {
+        for (;;)
+        {
+            vTaskDelay(delay);
+            pwdt->last_time = xTaskGetTickCount();
+        }
     }
 }
 _END_STD_C
