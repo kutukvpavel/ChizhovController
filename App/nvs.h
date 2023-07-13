@@ -25,4 +25,5 @@ namespace nvs
     sr_buf_t* get_input_inversion();
     a_io::cal_t* get_analog_cal();
     uint16_t* get_modbus_keepalive_threshold();
+    sr_buf_t* get_remote_output_mask();
 } // namespace nvs

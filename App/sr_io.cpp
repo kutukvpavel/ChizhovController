@@ -104,12 +104,36 @@ namespace sr_io
         assert_param(i < out::OUT_LEN);
         if (v)
         {
+            while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
             output_buffer[BIT_TO_WORD_IDX(i)] |= BV(BIT_REMAINDER_IDX(i));
         }
         else
         {
+            while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
             output_buffer[BIT_TO_WORD_IDX(i)] &= ~BV(BIT_REMAINDER_IDX(i));
         }
+        RELEASE_MUTEX();
+    }
+    HAL_StatusTypeDef set_remote_commanded_outputs(sr_buf_t* p)
+    {
+        if (!initialized) return HAL_ERROR;
+        uint32_t wait = 20;
+
+        sr_buf_t* mask = nvs::get_remote_output_mask();
+        for (size_t i = 0; i < output_buffer_len; i++)
+        {
+            p[i] &= mask[i];
+        }
+
+        ACQUIRE_MUTEX();
+
+        for (size_t i = 0; i < output_buffer_len; i++)
+        {
+            output_buffer[i] &= ~mask[i];
+            output_buffer[i] |= p[i];
+        }
+
+        RELEASE_MUTEX();
     }
     const sr_buf_t* get_outputs()
     {

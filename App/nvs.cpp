@@ -25,6 +25,7 @@ namespace nvs
         sr_buf_t input_invert[sr_io::input_buffer_len];
         a_io::cal_t analog_cal[a_io::in::LEN];
         uint16_t modbus_keepalive_threshold;
+        sr_buf_t remote_output_mask[sr_io::output_buffer_len];
     };
     static storage_t storage = {
         .pump_params = {
@@ -80,7 +81,8 @@ namespace nvs
         .modbus_id = 1,
         .input_invert = { (1u << sr_io::in::IN2) }, //Invert Stop button (NC)
         .analog_cal = {},
-        .modbus_keepalive_threshold = 5 //seconds
+        .modbus_keepalive_threshold = 5, //seconds
+        .remote_output_mask = { 0xF07F, 0x0001 }
     };
 
     static uint8_t nvs_ver = 0;
@@ -246,5 +248,9 @@ namespace nvs
     uint16_t* get_modbus_keepalive_threshold()
     {
         return &storage.modbus_keepalive_threshold;
+    }
+    sr_buf_t* get_remote_output_mask()
+    {
+        return storage.remote_output_mask;
     }
 } // namespace nvs

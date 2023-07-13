@@ -266,7 +266,7 @@ namespace mb_regs
             }
 
             //Commanded GPIO
-            //TODO
+            sr_io::set_remote_commanded_outputs(mb->p->commanded_outputs);
 
             //Pump commanded values
             for (size_t i = 0; i < MY_PUMPS_NUM; i++)

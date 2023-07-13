@@ -35,25 +35,25 @@ namespace sr_io
     };
     enum out : size_t
     {
-        OUT_OPTO6,
-        OUT_OPTO5,
-        OUT_OPTO4,
-        OUT_OPTO3,
-        OUT_OPTO2,
-        OUT_OPTO1,
-        OUT_OPTO0,
+        OUT_OPTO6, //User
+        OUT_OPTO5, //User
+        OUT_OPTO4, //User
+        OUT_OPTO3, //User
+        OUT_OPTO2, //User
+        OUT_OPTO1, //User
+        OUT_OPTO0, //User
         MOTOR_DIR_3,
         MOTOR_DIR_2,
         MOTOR_DIR_1,
         MOTOR_DIR_0,
         MOTORS_EN,
-        OC12,
-        OC11,
-        OC10,
-        OC9,
-        OC8, //PCB error
-        OC6,
-        OC5,
+        OC12, //User
+        OC11, //User
+        OC10, //User
+        OC9, //User
+        OC8, //PCB error, user available
+        OC6, //HW interlock enable
+        OC5, //HW interlock lock pulse
         OC4,
         OC3,
         OC2,
@@ -68,6 +68,7 @@ namespace sr_io
     
     bool get_input(in i);
     void set_output(out i, bool v);
+    HAL_StatusTypeDef set_remote_commanded_outputs(sr_buf_t* p);
     const sr_buf_t* get_inputs();
     const sr_buf_t* get_outputs();
     bool get_output(out i);

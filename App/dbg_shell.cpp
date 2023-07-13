@@ -42,19 +42,28 @@ _END_STD_C
 namespace cli_commands
 {
     //Common API
-    void print_input_invert()
+    void print_sr_reg_core(sr_buf_t* src, size_t len)
     {
-        sr_buf_t* inv = nvs::get_input_inversion();
-        for (size_t i = 0; i < sr_io::input_buffer_len; i++)
+        for (size_t i = 0; i < len; i++)
         {
-            printf("\tWord #%u = 0x%X = 0b ", i, inv[i]);
+            printf("\tWord #%u = 0x%X = 0b ", i, src[i]);
             for (size_t j = 0; j < (sizeof(sr_buf_t) * __CHAR_BIT__); j++)
             {
-                putc((inv[i] & (1u << (sizeof(sr_buf_t) * __CHAR_BIT__ - j - 1))) ? '1' : '0', stdout);
+                putc((src[i] & (1u << (sizeof(sr_buf_t) * __CHAR_BIT__ - j - 1))) ? '1' : '0', stdout);
                 if (j % 8 == 7) putc(' ', stdout);
             }
             putc('\n', stdout);
         }
+    }
+    void print_input_invert()
+    {
+        sr_buf_t* inv = nvs::get_input_inversion();
+        print_sr_reg_core(inv, sr_io::input_buffer_len);
+    }
+    void print_remote_output_mask()
+    {
+        sr_buf_t* mask = nvs::get_remote_output_mask();
+        print_sr_reg_core(mask, sr_io::output_buffer_len);
     }
 
     //Actual commands
@@ -211,6 +220,8 @@ namespace cli_commands
         );
         puts("\tInput inversion:");
         print_input_invert();
+        puts("\tRemote output maks:");
+        print_remote_output_mask();
         printf("\tModbus address = %u\n", *nvs::get_modbus_addr());
         auto motor_params = nvs::get_motor_params();
         auto motor_regs = nvs::get_motor_regs();
@@ -309,7 +320,7 @@ namespace cli_commands
             if (sscanf(argv[1], "%u", &idx) != 1) return 2;
             *inv ^= (1u << idx);
         }
-        else if (argc == (sr_io::input_buffer_len + 1))
+        else if (argc == (sr_io::input_buffer_len + 2))
         {
             sr_buf_t b[sr_io::input_buffer_len];
             for (size_t i = 0; i < sr_io::input_buffer_len; i++)
@@ -324,6 +335,38 @@ namespace cli_commands
         }
 
         print_input_invert();
+        return 0;
+    }
+    uint8_t remote_output_mask(int argc, char** argv)
+    {
+        if (argc < 2)
+        {
+            print_remote_output_mask();
+            return 0;
+        }
+
+        sr_buf_t* mask = nvs::get_remote_output_mask();
+        if (argc == 2)
+        {
+            size_t idx;
+            if (sscanf(argv[1], "%u", &idx) != 1) return 2;
+            *mask ^= (1u << idx);
+        }
+        else if (argc == (sr_io::output_buffer_len + 2))
+        {
+            sr_buf_t b[sr_io::output_buffer_len];
+            for (size_t i = 0; i < sr_io::output_buffer_len; i++)
+            {
+                if (sscanf(argv[i + 1], "%hx", &(b[i])) != 1) return 2;
+            }
+            memcpy(mask, b, sizeof(b));
+        }
+        else
+        {
+            return 1;
+        }
+
+        print_remote_output_mask();
         return 0;
     }
 
@@ -423,6 +466,8 @@ void init()
         "1 arg = index of the input to toggle inversion bit for, "
         "N>2 args = N inv register words in hex without 0x (number of words is printed with no args given)",
         &cli_commands::input_invert);
+    CLI_ADD_CMD("remote_output_mask", "Get/set SR_IO modbus remote commanded output mask. Args = see input_invert help.",
+        &cli_commands::remote_output_mask);
 
     CLI_ADD_CMD("lamp_test_custom", "Invoke display lamp test interop. Expects 1 arg: byte pattern.",
         &cli_commands::lamp_test_custom);

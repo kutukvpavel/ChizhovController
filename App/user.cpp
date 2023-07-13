@@ -196,6 +196,8 @@ void app_main(wdt::task_t* pwdt)
                 }
             }
             if (jump_to_auto && !mb_regs::any_remote_ready()) pumps::stop_all();
+            pumps::enable_hw_interlock(true);
+            vTaskDelay(pdMS_TO_TICKS(30));
             pumps::switch_hw_interlock();
             state = jump_to_auto ? states::automatic : states::manual;
         }
@@ -252,6 +254,7 @@ void app_main(wdt::task_t* pwdt)
     }
     case states::emergency:
         led = led_states::ERROR;
+        pumps::enable_hw_interlock(false);
         front_panel::set_light(front_panel::l_emergency, front_panel::l_state::on);
         front_panel::set_light(front_panel::l_stop, front_panel::l_state::blink);
         if (front_panel::get_button(front_panel::b_stop))

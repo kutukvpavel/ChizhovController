@@ -92,13 +92,19 @@ namespace pumps
         }
     }
 
+    void enable_hw_interlock(bool v)
+    {
+        static const sr_io::out motor_enable_interlock = sr_io::out::OC6;
+
+        sr_io::set_output(motor_enable_interlock, v);
+    }
     void switch_hw_interlock()
     {
-        static const sr_io::out motor_enable_interlock = sr_io::out::OC5;
+        static const sr_io::out motor_pulse_interlock = sr_io::out::OC5;
 
-        sr_io::set_output(motor_enable_interlock, true);
+        sr_io::set_output(motor_pulse_interlock, true);
         vTaskDelay(pdMS_TO_TICKS(150));
-        sr_io::set_output(motor_enable_interlock, false);
+        sr_io::set_output(motor_pulse_interlock, false);
     }
     bool get_hw_interlock_ok()
     {
