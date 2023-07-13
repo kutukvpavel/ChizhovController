@@ -102,17 +102,18 @@ namespace sr_io
     void set_output(out i, bool v)
     {
         assert_param(i < out::OUT_LEN);
+
         if (v)
         {
-            while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
+            if (initialized) while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
             output_buffer[BIT_TO_WORD_IDX(i)] |= BV(BIT_REMAINDER_IDX(i));
         }
         else
         {
-            while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
+            if (initialized) while (xSemaphoreTake(srMutexHandle, portMAX_DELAY) != pdTRUE);
             output_buffer[BIT_TO_WORD_IDX(i)] &= ~BV(BIT_REMAINDER_IDX(i));
         }
-        RELEASE_MUTEX();
+        if (initialized) RELEASE_MUTEX();
     }
     HAL_StatusTypeDef set_remote_commanded_outputs(sr_buf_t* p)
     {
@@ -134,6 +135,8 @@ namespace sr_io
         }
 
         RELEASE_MUTEX();
+
+        return HAL_OK;
     }
     const sr_buf_t* get_outputs()
     {

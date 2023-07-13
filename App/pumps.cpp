@@ -45,6 +45,10 @@ namespace pumps
 
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
+        assert_param(p);
+        assert_param(mp);
+        assert_param(mr);
+        
         motor_regs = mr;
         params = p;
         set_enable(false);
