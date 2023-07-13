@@ -47,7 +47,7 @@ public:
     motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
     ~motor_t();
 
-    void reload_params();
+    HAL_StatusTypeDef reload_params();
     void print_debug_info();
 
     float get_volume_rate_limit();

@@ -274,6 +274,18 @@ namespace cli_commands
         *nvs::get_modbus_keepalive_threshold() = v;
         return 0;
     }
+    uint8_t set_pump_coef(int argc, char** argv)
+    {
+        if (argc < 2) return 1;
+
+        float v;
+        if (sscanf(argv[1], "%f", &v) != 1) return 2;
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            nvs::get_motor_params()[i].volume_rate_to_rps = v;
+        }
+        return 0;
+    }
 
     uint8_t get_coproc_err_rate(int argc, char** argv)
     {

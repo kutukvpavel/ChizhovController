@@ -97,11 +97,16 @@ motor_t::~motor_t()
     vSemaphoreDelete(params_mutex);
 }
 
-void motor_t::reload_params()
+HAL_StatusTypeDef motor_t::reload_params()
 {
-    while (xSemaphoreTake(params_mutex, portMAX_DELAY));
+    if (xSemaphoreTake(params_mutex, pdMS_TO_TICKS(50)) != pdTRUE) 
+    {
+        ERR("Failed to acquire motor params mutex");
+        return HAL_BUSY;
+    }
     params = *nvs::get_motor_params();
     xSemaphoreGive(params_mutex);
+    return HAL_OK;
 }
 void motor_t::print_debug_info()
 {

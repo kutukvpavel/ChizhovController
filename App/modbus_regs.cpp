@@ -253,6 +253,7 @@ namespace mb_regs
             //Otherwise only IO and pump setpoints are tracked
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::reload))
             {
+                DBG("Modbus params reload, pump #0 coef = %f", mb->p->motor_params[0].volume_rate_to_rps);
                 //Modbus address
                 *mb_addr = mb->p->addr;
                 //Pump config
