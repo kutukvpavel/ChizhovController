@@ -28,7 +28,9 @@ namespace pumps
     void enable_hw_interlock(bool v);
     void switch_hw_interlock();
     bool get_hw_interlock_ok();
+    void tick_10ms();
 
+    void set_timer(size_t i, float t);
     bool get_running(size_t i);
     float get_indicated_speed(size_t i);
     HAL_StatusTypeDef set_indicated_speed(size_t i, float v);

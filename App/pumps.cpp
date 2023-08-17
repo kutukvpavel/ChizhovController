@@ -3,6 +3,8 @@
 #include "tim.h"
 #include "sr_io.h"
 #include "coprocessor.h"
+#include "task_handles.h"
+#include "wdt.h"
 
 #include <math.h>
 
@@ -42,6 +44,8 @@ namespace pumps
     static bool enable = false;
     static uint32_t consistent_overload_counter[MY_PUMPS_MAX] = {};
     static motor_reg_t* motor_regs;
+    static SemaphoreHandle_t tick_mutex = NULL;
+    static uint32_t deadlock_counter = 0;
 
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
@@ -60,6 +64,8 @@ namespace pumps
                 static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
             cfg.full_assigned_speed = mr[i].volume_rate;
         }
+        tick_mutex = xSemaphoreCreateMutex();
+        assert_param(tick_mutex);
     }
 
     void reload_motor_params()
@@ -82,6 +88,7 @@ namespace pumps
     }
     void print_debug_info()
     {
+        printf("Tick deadlock stats: %lu\n", deadlock_counter);
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
         {
             printf("Motor #%u:\n", i);
@@ -96,6 +103,30 @@ namespace pumps
         }
     }
 
+    void tick_10ms()
+    {
+        if (xSemaphoreTake(tick_mutex, pdMS_TO_TICKS(5)) != pdTRUE)
+        {
+            ERR("Tick locked");
+            deadlock_counter++;
+            return;
+        }
+        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        {
+            auto& r = motor_regs[i];
+            auto& m = motors[i];
+            if (!m->check_status_bit(motor_t::status_bits::on_timer))
+            {
+                m->set_disabled_by_timer(false);
+                continue;
+            }
+            if (r.time_left <= 0) continue;
+
+            r.time_left -= 0.010f;
+            m->set_disabled_by_timer(r.time_left <= 0);
+        }
+        xSemaphoreGive(tick_mutex);
+    }
     void enable_hw_interlock(bool v)
     {
         static const sr_io::out motor_enable_interlock = sr_io::out::OC6;
@@ -126,6 +157,22 @@ namespace pumps
         return enable;
     }
 
+    void set_timer(size_t i, float t)
+    {
+        assert_param(i < MY_PUMPS_NUM);
+
+        if (isfinite(t))
+        {
+            while (xSemaphoreTake(tick_mutex, portMAX_DELAY) != pdTRUE);
+            motor_regs[i].time_left = t;
+            motors[i]->set_status_bit(motor_t::status_bits::on_timer, true);
+            xSemaphoreGive(tick_mutex);
+        }
+        else
+        {
+            motors[i]->set_status_bit(motor_t::status_bits::on_timer, false);
+        }
+    }
     bool get_running(size_t i)
     {
         return enable && (!motors[i]->get_paused()) && (motors[i]->get_volume_rate() > __FLT_EPSILON__)
@@ -230,3 +277,28 @@ namespace pumps
         }
     }
 } // namespace pumps
+
+_BEGIN_STD_C
+STATIC_TASK_BODY(MY_PUMP)
+{
+    static const TickType_t interval = pdMS_TO_TICKS(10);
+    TickType_t last_wake = configINITIAL_TICK_COUNT;
+    
+    auto pwdt = wdt::register_task(200, "PUMPS");
+    last_wake = xTaskGetTickCount();
+
+    for (;;)
+    {
+        pumps::tick_10ms();
+
+        vTaskDelayUntil(&last_wake, interval);
+        pwdt->last_time = xTaskGetTickCount();
+        if ((last_wake + interval) < pwdt->last_time) 
+        {
+            last_wake = pwdt->last_time;
+            pumps::deadlock_counter++;
+            ERR("Realtime delay!");
+        }
+    }
+}
+_END_STD_C

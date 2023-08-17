@@ -224,3 +224,25 @@ bool motor_t::get_paused()
 {
     return CHECK_STATUS_BIT(status_bits::paused);
 }
+void motor_t::set_disabled_by_timer(bool v)
+{
+    if (CHECK_STATUS_BIT(status_bits::timer_completed) == v) return;
+    if (v) {
+        HAL_TIM_PWM_Stop(timer, timer_channel);
+        SET_STATUS_BIT(status_bits::timer_completed);
+    }
+    else {
+        HAL_TIM_PWM_Start(timer, timer_channel);
+        RESET_STATUS_BIT(status_bits::timer_completed);
+    }
+}
+
+bool motor_t::check_status_bit(status_bits b)
+{
+    return CHECK_STATUS_BIT(b);
+}
+void motor_t::set_status_bit(status_bits b, bool v)
+{
+    if (v) SET_STATUS_BIT(b);
+    else RESET_STATUS_BIT(b);
+}

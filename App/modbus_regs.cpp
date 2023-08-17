@@ -42,7 +42,12 @@ namespace mb_regs
         reset,
         keep_alive,
         reserved1,
-        firmware_upgrade
+        firmware_upgrade,
+        start_timed_exec
+    };
+    enum pump_flags : uint16_t
+    {
+        enable_timer = 0
     };
 
     struct PACKED_FOR_MODBUS reg_t
@@ -62,11 +67,12 @@ namespace mb_regs
         sr_buf_t sr_inputs[sr_io::input_buffer_len]; //Len = 1
         sr_buf_t sr_outputs[sr_io::output_buffer_len]; //Len = 2
         sr_buf_t commanded_outputs[sr_io::output_buffer_len]; //Len = 2
-        uint16_t reserved1;
+        uint16_t commanded_pump_flags[MY_PUMPS_NUM];
         pumps::params_t pump_params;
         motor_params_t motor_params[MY_PUMPS_NUM];
         motor_reg_t motor_regs[MY_PUMPS_NUM];
         float commanded_motor_rate[MY_PUMPS_NUM];
+        float commanded_pump_timer[MY_PUMPS_NUM];
     };
     const size_t length = sizeof(reg_t) / sizeof(uint16_t);
 
@@ -272,6 +278,11 @@ namespace mb_regs
             //Pump commanded values
             for (size_t i = 0; i < MY_PUMPS_NUM; i++)
             {
+                if (mb->p->commanded_pump_flags[i] & (1u << pump_flags::enable_timer))
+                {
+                    pumps::set_timer(i, mb->p->commanded_pump_timer[i]);
+                    mb->p->commanded_pump_flags[i] &= ~(1u << pump_flags::enable_timer);
+                }
                 pumps::set_indicated_speed(i, mb->p->commanded_motor_rate[i]);
             }
 

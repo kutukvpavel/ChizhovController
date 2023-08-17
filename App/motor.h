@@ -21,6 +21,7 @@ struct PACKED_FOR_MODBUS motor_reg_t
     float err;
     uint16_t status;
     uint16_t reserved1; //Alignment
+    float time_left;
 };
 
 class motor_t
@@ -41,7 +42,9 @@ public:
         missing = 0,
         overload,
         paused,
-        running
+        running,
+        on_timer,
+        timer_completed
     };
 
     motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
@@ -61,4 +64,8 @@ public:
     bool get_missing();
     void set_paused(bool v);
     bool get_paused();
+    void set_disabled_by_timer(bool v);
+    
+    bool check_status_bit(status_bits b);
+    void set_status_bit(status_bits b, bool v);
 };
