@@ -121,6 +121,7 @@ namespace pumps
                 continue;
             }
             if (r.time_left <= 0) continue;
+            if (motors[i]->get_paused()) continue;
 
             r.time_left -= 0.010f;
             m->set_disabled_by_timer(r.time_left <= 0);
