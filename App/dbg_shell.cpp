@@ -223,6 +223,7 @@ namespace cli_commands
         puts("\tRemote output maks:");
         print_remote_output_mask();
         printf("\tModbus address = %u\n", *nvs::get_modbus_addr());
+        printf("\tModbus keepalive threshold = %u\n", *nvs::get_modbus_keepalive_threshold());
         auto motor_params = nvs::get_motor_params();
         auto motor_regs = nvs::get_motor_regs();
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
@@ -266,12 +267,30 @@ namespace cli_commands
         );
         return 0;
     }
+    uint8_t nvs_calc_crc(int argc, char** argv)
+    {
+        uint32_t crc;
+        if (nvs::calculate_crc(&crc) == HAL_OK)
+        {
+            printf("\t%0lX\n", crc);
+            return 0;
+        }
+        return 1;
+    }
     uint8_t set_modbus_keepalive(int argc, char** argv)
     {
         if (argc < 2) return 1;
         uint16_t v;
         if (sscanf(argv[1], "%hu", &v) != 1) return 2;
         *nvs::get_modbus_keepalive_threshold() = v;
+        return 0;
+    }
+    uint8_t set_modbus_addr(int argc, char** argv)
+    {
+        if (argc < 2) return 1;
+        uint16_t v;
+        if (sscanf(argv[1], "%hu", &v) != 1) return 2;
+        *nvs::get_modbus_addr() = v;
         return 0;
     }
     uint8_t set_pump_coef(int argc, char** argv)
@@ -460,8 +479,10 @@ void init()
     CLI_ADD_CMD("nvs_test", "Test EEPROM readback, performs sequential number write and read, and does nvs_save afterwards",
         &cli_commands::nvs_test);
     CLI_ADD_CMD("nvs_report", "Report NVS contents in human-readable format", &cli_commands::nvs_report);
+    CLI_ADD_CMD("nvs_calc_crc", "Calculate and report current NVS contents' CRC, doesn't modify storage.crc", &cli_commands::nvs_calc_crc);
     CLI_ADD_CMD("set_modbus_keepalive", "Set modbus keep alive timeout threshold (seconds). Expects a uint16_t.",
         &cli_commands::set_modbus_keepalive);
+    CLI_ADD_CMD("set_modbus_addr", "Set modbus station address (default = 1). Expects a uint16_t.", &cli_commands::set_modbus_addr);
 
     CLI_ADD_CMD("get_coproc_err_rate", "Print coprocessor CRC error count since boot",
         &cli_commands::get_coproc_err_rate);

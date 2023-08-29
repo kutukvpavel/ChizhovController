@@ -14,6 +14,7 @@ namespace nvs
     void dump_hex();
     HAL_StatusTypeDef test();
     HAL_StatusTypeDef load_motor_regs();
+    HAL_StatusTypeDef calculate_crc(uint32_t* crc);
 
     uint8_t get_stored_version();
     uint8_t get_required_version();

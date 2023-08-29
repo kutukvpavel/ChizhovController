@@ -3,11 +3,14 @@
 #include "i2c_sync.h"
 #include "sr_io.h"
 
+#include "../Core/Inc/crc.h"
+
+#define MY_EEPROM_SIZE 512 //bytes
 #define MY_EEPROM_ADDR 0xA0
 #define MY_NVS_I2C_ADDR(mem_addr) (MY_EEPROM_ADDR | ((mem_addr & 0x700) >> 7))
 #define MY_NVS_VER_ADDR 0u
 #define MY_NVS_START_ADDRESS 8u
-#define MY_NVS_VERSION 4u
+#define MY_NVS_VERSION 6u
 #define MY_NVS_PAGE_SIZE 8u
 #define MY_NVS_TOTAL_PAGES 64u
 #define MY_NVS_TOTAL_SIZE (MY_NVS_PAGE_SIZE * MY_NVS_TOTAL_PAGES)
@@ -16,6 +19,11 @@
 
 namespace nvs
 {
+    struct __packed storage_preamble_t
+    {
+        uint8_t version;
+        uint32_t crc;
+    };
     struct PACKED_FOR_NVS storage_t
     {
         pumps::params_t pump_params;
@@ -26,6 +34,7 @@ namespace nvs
         a_io::cal_t analog_cal[a_io::in::LEN];
         uint16_t modbus_keepalive_threshold;
         sr_buf_t remote_output_mask[sr_io::output_buffer_len];
+        uint16_t reserved;
     };
     static storage_t storage = {
         .pump_params = {
@@ -65,27 +74,31 @@ namespace nvs
             {
                 .volume_rate = 0,
                 .rps = 0,
-                .err = 0
+                .err = 0,
+                .time_left = 0
             },
             {
                 .volume_rate = 0,
                 .rps = 0,
-                .err = 0
+                .err = 0,
+                .time_left = 0
             },
             {
                 .volume_rate = 0,
                 .rps = 0,
-                .err = 0
+                .err = 0,
+                .time_left = 0
             }
         },
         .modbus_id = 1,
         .input_invert = { (1u << sr_io::in::IN2) }, //Invert Stop button (NC)
         .analog_cal = {},
         .modbus_keepalive_threshold = 5, //seconds
-        .remote_output_mask = { 0xF07F, 0x0001 }
+        .remote_output_mask = { 0xF07F, 0x0001 },
+        .reserved = 0
     };
 
-    static uint8_t nvs_ver = 0;
+    static storage_preamble_t preamble = {};
     HAL_StatusTypeDef eeprom_read(uint16_t addr, uint8_t* buf, uint16_t len)
     {
         assert_param((addr + len) < MY_NVS_TOTAL_SIZE);
@@ -130,18 +143,36 @@ namespace nvs
         }
         return status;
     }
+    HAL_StatusTypeDef calculate_crc(uint32_t* crc)
+    {
+        static const size_t crc_buf_size_bytes = sizeof(storage);
+        static const size_t crc_buf_size_words = crc_buf_size_bytes / sizeof(uint32_t) + 
+            (((crc_buf_size_bytes % sizeof(uint32_t)) != 0) ? 1 : 0);
+
+        uint32_t* crc_buf = new uint32_t[crc_buf_size_words]();
+        if (!crc_buf) return HAL_ERROR;
+        memcpy(crc_buf, &storage, crc_buf_size_bytes);
+        //memset(crc_buf + crc_buf_size_bytes, 0, crc_buf_size_words * sizeof(uint32_t) - crc_buf_size_bytes);
+        hcrc.Instance->DR = UINT32_MAX;
+        *crc = HAL_CRC_Calculate(&hcrc, crc_buf, crc_buf_size_words);
+        delete[] crc_buf;
+        DBG("CRC calc: %0lX", *crc);
+        return HAL_OK;
+    }
 
     HAL_StatusTypeDef init()
     {
         static_assert(MY_NVS_START_ADDRESS % MY_NVS_PAGE_SIZE == 0);
+        static_assert(sizeof(storage_t) < (MY_EEPROM_SIZE - MY_NVS_START_ADDRESS));
+        static_assert(sizeof(storage_preamble_t) < MY_NVS_PAGE_SIZE);
         HAL_StatusTypeDef ret;
         DBG("NVS init...");
 
-        if ((ret = eeprom_read(MY_NVS_VER_ADDR, &nvs_ver, sizeof(nvs_ver))) != HAL_OK) return ret;
-        DBG("Detected NVS ver: %u", nvs_ver);
-        if (nvs_ver != MY_NVS_VERSION) 
+        if ((ret = eeprom_read(MY_NVS_VER_ADDR, reinterpret_cast<uint8_t*>(&preamble), sizeof(preamble))) != HAL_OK) return ret;
+        DBG("Detected NVS ver: %u, crc = %0lX", preamble.version, preamble.crc);
+        if (preamble.version != MY_NVS_VERSION)
         {
-            ERR("NVS version mismatch, sould be: %u!", MY_NVS_VERSION);
+            ERR("NVS version mismatch, should be: %u!", MY_NVS_VERSION);
             return HAL_ERROR;
         }
         return HAL_OK;
@@ -151,18 +182,43 @@ namespace nvs
         HAL_StatusTypeDef ret;
         DBG("Loading NVS...");
 
-        if (nvs_ver != MY_NVS_VERSION) return HAL_ERROR;
+        if (preamble.version != MY_NVS_VERSION) return HAL_ERROR;
         if ((ret = eeprom_read(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&storage), sizeof(storage))) != HAL_OK) return ret;
-        return HAL_OK;
+        //Check CRC
+        uint32_t crc;
+        if (calculate_crc(&crc) != HAL_OK)
+        {
+            ERR("Failed to calculate NVS CRC");
+            return HAL_ERROR;
+        }
+        if (crc == preamble.crc)
+        {
+            DBG("NVS CRC OK");
+            return HAL_OK;
+        }
+        else
+        {
+            ERR("NVS CRC doesn't match, stored = %0lX, calc = %0lX", preamble.crc, crc);
+            return HAL_ERROR;
+        }
     }
     HAL_StatusTypeDef save()
     {
         HAL_StatusTypeDef ret;
         
+        //Compute CRC
+        uint32_t crc;
+        if (calculate_crc(&crc) != HAL_OK)
+        {
+            ERR("Failed to calculate NVS CRC");
+            return HAL_ERROR;
+        }
+        preamble.crc = crc;
+        //Store 
         if ((ret = eeprom_write(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&storage), sizeof(storage))) != HAL_OK) return ret;
         DBG("NVS Data written OK. Writing NVS version...");
-        uint8_t ver[] = { MY_NVS_VERSION };
-        return eeprom_write(MY_NVS_VER_ADDR, ver, 1);
+        preamble.version = MY_NVS_VERSION;
+        return eeprom_write(MY_NVS_VER_ADDR, reinterpret_cast<uint8_t*>(&preamble), sizeof(preamble));
     }
     HAL_StatusTypeDef reset()
     {
@@ -203,7 +259,7 @@ namespace nvs
         HAL_StatusTypeDef ret;
         DBG("Loading motor regs from NVS...");
 
-        if (nvs_ver != MY_NVS_VERSION) return HAL_ERROR;
+        if (preamble.version != MY_NVS_VERSION) return HAL_ERROR;
         if ((ret = eeprom_read(MY_NVS_START_ADDRESS + offsetof(storage_t, storage_t::motor_regs),
             reinterpret_cast<uint8_t*>(&(storage.motor_regs[0])), sizeof(storage_t::motor_regs))) != HAL_OK) return ret;
         return HAL_OK;
@@ -211,7 +267,7 @@ namespace nvs
 
     uint8_t get_stored_version()
     {
-        return nvs_ver;
+        return preamble.version;
     }
     uint8_t get_required_version()
     {
@@ -219,7 +275,7 @@ namespace nvs
     }
     bool get_version_match()
     {
-        return MY_NVS_VERSION == nvs_ver;
+        return MY_NVS_VERSION == preamble.version;
     }
     motor_reg_t* get_motor_regs()
     {

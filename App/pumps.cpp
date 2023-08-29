@@ -6,6 +6,7 @@
 #include "task_handles.h"
 #include "wdt.h"
 
+#include "../Middlewares/Third_Party/FreeRTOS/Source/include/timers.h"
 #include <math.h>
 
 namespace pumps
@@ -46,6 +47,9 @@ namespace pumps
     static motor_reg_t* motor_regs;
     static SemaphoreHandle_t tick_mutex = NULL;
     static uint32_t deadlock_counter = 0;
+    static TimerHandle_t tick_10ms_timer;
+
+    void tick_10ms(TimerHandle_t t);
 
     void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
@@ -66,6 +70,7 @@ namespace pumps
         }
         tick_mutex = xSemaphoreCreateMutex();
         assert_param(tick_mutex);
+        tick_10ms_timer = xTimerCreate("PUMP", pdMS_TO_TICKS(10), pdTRUE, tick_10ms_timer, tick_10ms);
     }
 
     void reload_motor_params()
@@ -103,7 +108,7 @@ namespace pumps
         }
     }
 
-    void tick_10ms()
+    void tick_10ms(TimerHandle_t t)
     {
         if (xSemaphoreTake(tick_mutex, pdMS_TO_TICKS(5)) != pdTRUE)
         {
@@ -279,7 +284,7 @@ namespace pumps
     }
 } // namespace pumps
 
-_BEGIN_STD_C
+/*_BEGIN_STD_C
 STATIC_TASK_BODY(MY_PUMP)
 {
     static const TickType_t interval = pdMS_TO_TICKS(10);
@@ -302,4 +307,4 @@ STATIC_TASK_BODY(MY_PUMP)
         }
     }
 }
-_END_STD_C
+_END_STD_C*/

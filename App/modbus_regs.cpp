@@ -422,7 +422,11 @@ STATIC_TASK_BODY(MY_MODBUS)
     static TickType_t last_wake;
     static wdt::task_t* pwdt;
 
-    if (mb_regs::init(nvs::get_modbus_addr()) != HAL_OK) while(1);
+    if (mb_regs::init(nvs::get_modbus_addr()) != HAL_OK) 
+    {
+        ERR("Modbus init error");
+        while(1);
+    }
     pwdt = wdt::register_task(1000, "mb");
     INIT_NOTIFY(MY_MODBUS);
 
