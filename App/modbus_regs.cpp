@@ -42,12 +42,12 @@ namespace mb_regs
         reset,
         keep_alive,
         reserved1,
-        firmware_upgrade,
-        start_timed_exec
+        firmware_upgrade
     };
     enum pump_flags : uint16_t
     {
-        enable_timer = 0
+        enable_timer = 0,
+        trigger_timer
     };
 
     struct PACKED_FOR_MODBUS reg_t
@@ -214,13 +214,6 @@ namespace mb_regs
 
         //Pump values
         auto motor_regs = nvs::get_motor_regs();
-        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
-        {
-            if (pumps::get_running(i))
-                motor_regs[i].status |= (1u << motor_t::status_bits::running);
-            else
-                motor_regs[i].status &= ~(1u << motor_t::status_bits::running);
-        }
         COPY_OUTPUT_STRUCTS(motor_regs, mb->p->motor_regs);
 
         /** INPUT **/
@@ -280,10 +273,18 @@ namespace mb_regs
             {
                 if (mb->p->commanded_pump_flags[i] & (1u << pump_flags::enable_timer))
                 {
-                    pumps::set_timer(i, mb->p->commanded_pump_timer[i]);
-                    mb->p->commanded_pump_flags[i] &= ~(1u << pump_flags::enable_timer);
+                    pumps::set_mode(i, pumps::modes::timed);
+                }
+                else
+                {
+                    pumps::set_mode(i, pumps::modes::continuous);
                 }
                 pumps::set_indicated_speed(i, mb->p->commanded_motor_rate[i]);
+                if (mb->p->commanded_pump_flags[i] & (1u << pump_flags::trigger_timer))
+                {
+                    pumps::set_timer(i, mb->p->commanded_pump_timer[i]);
+                    mb->p->commanded_pump_flags[i] &= ~(1u << pump_flags::trigger_timer);
+                }
             }
 
             //NVS save bit

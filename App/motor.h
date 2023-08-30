@@ -36,6 +36,9 @@ private:
     motor_params_t params;
     motor_reg_t* reg;
     SemaphoreHandle_t params_mutex = NULL;
+    SemaphoreHandle_t supervizer_mutex = NULL;
+
+    void supervize_pwm();
 public:
     enum status_bits : uint16_t
     {
@@ -43,8 +46,8 @@ public:
         overload,
         paused,
         running,
-        on_timer,
-        timer_completed
+        timer_mode,
+        timer_ticking
     };
 
     motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const motor_params_t* p, motor_reg_t* r);
@@ -64,7 +67,6 @@ public:
     bool get_missing();
     void set_paused(bool v);
     bool get_paused();
-    void set_disabled_by_timer(bool v);
     
     bool check_status_bit(status_bits b);
     void set_status_bit(status_bits b, bool v);

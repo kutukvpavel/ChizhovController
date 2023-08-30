@@ -79,6 +79,7 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const
     static_assert(sizeof(motor_reg_t) % 2 == 0);
 
     params_mutex = xSemaphoreCreateMutex();
+    supervizer_mutex = xSemaphoreCreateMutex();
     assert_param(params_mutex);
     assert_param(tim);
     assert_param(p);
@@ -95,6 +96,7 @@ motor_t::~motor_t()
     HAL_TIM_PWM_Stop(timer, timer_channel);
     HAL_TIM_Base_Stop(timer);
     vSemaphoreDelete(params_mutex);
+    vSemaphoreDelete(supervizer_mutex);
 }
 
 HAL_StatusTypeDef motor_t::reload_params()
@@ -129,10 +131,10 @@ HAL_StatusTypeDef motor_t::set_volume_rate(float v)
     if (v == last_volume_rate) return HAL_OK;
     if (v <= __FLT_EPSILON__)
     {
-        HAL_TIM_PWM_Stop(timer, timer_channel);
         last_volume_rate = 0;
         reg->volume_rate = 0;
         reg->rps = 0;
+        supervize_pwm();
         return HAL_OK;
     }
 
@@ -157,11 +159,8 @@ HAL_StatusTypeDef motor_t::set_volume_rate(float v)
     timer->Instance->ARR = arr;
     taskEXIT_CRITICAL();
 
-    if (last_volume_rate <= 0)
-    {
-        HAL_TIM_PWM_Start(timer, timer_channel);
-    }
     last_volume_rate = v;
+    supervize_pwm();
 
     return HAL_OK;
 }
@@ -212,29 +211,16 @@ void motor_t::set_paused(bool v)
 {
     if (get_paused() == v) return;
     if (v) {
-        HAL_TIM_PWM_Stop(timer, timer_channel);
         SET_STATUS_BIT(status_bits::paused);
     }
     else {
-        HAL_TIM_PWM_Start(timer, timer_channel);
         RESET_STATUS_BIT(status_bits::paused);
     }
+    supervize_pwm();
 }
 bool motor_t::get_paused()
 {
     return CHECK_STATUS_BIT(status_bits::paused);
-}
-void motor_t::set_disabled_by_timer(bool v)
-{
-    if (CHECK_STATUS_BIT(status_bits::timer_completed) == v) return;
-    if (v) {
-        HAL_TIM_PWM_Stop(timer, timer_channel);
-        SET_STATUS_BIT(status_bits::timer_completed);
-    }
-    else {
-        HAL_TIM_PWM_Start(timer, timer_channel);
-        RESET_STATUS_BIT(status_bits::timer_completed);
-    }
 }
 
 bool motor_t::check_status_bit(status_bits b)
@@ -243,6 +229,29 @@ bool motor_t::check_status_bit(status_bits b)
 }
 void motor_t::set_status_bit(status_bits b, bool v)
 {
+    if (CHECK_STATUS_BIT(b) == v) return;
     if (v) SET_STATUS_BIT(b);
     else RESET_STATUS_BIT(b);
+    supervize_pwm();
+}
+
+void motor_t::supervize_pwm()
+{
+    while (xSemaphoreTake(supervizer_mutex, portMAX_DELAY) != pdTRUE);
+    if ((
+        (last_volume_rate <= 0) ||
+        CHECK_STATUS_BIT(status_bits::paused) ||
+        CHECK_STATUS_BIT(status_bits::missing) ||
+        (CHECK_STATUS_BIT(status_bits::timer_mode) && !CHECK_STATUS_BIT(status_bits::timer_ticking))
+    ) == CHECK_STATUS_BIT(status_bits::running))
+    {
+        HAL_TIM_PWM_Stop(timer, timer_channel);
+        RESET_STATUS_BIT(status_bits::running);
+    }
+    else
+    {
+        HAL_TIM_PWM_Start(timer, timer_channel);
+        SET_STATUS_BIT(status_bits::running);
+    }
+    xSemaphoreGive(supervizer_mutex);
 }
