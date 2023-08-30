@@ -71,6 +71,8 @@ namespace pumps
         tick_mutex = xSemaphoreCreateMutex();
         assert_param(tick_mutex);
         tick_10ms_timer = xTimerCreate("PUMP", pdMS_TO_TICKS(10), pdTRUE, tick_10ms_timer, tick_10ms);
+        assert_param(tick_10ms_timer);
+        while (xTimerStart(tick_10ms_timer, portMAX_DELAY) != pdTRUE);
     }
 
     void reload_motor_params()
@@ -98,6 +100,7 @@ namespace pumps
         {
             printf("Motor #%u:\n", i);
             motors[i]->print_debug_info();
+            printf("\tTime left = %f\n", motor_regs[i].time_left);
         }
     }
     void update_load()
@@ -123,11 +126,13 @@ namespace pumps
             if (!m->check_status_bit(motor_t::status_bits::timer_mode))
             {
                 m->set_status_bit(motor_t::status_bits::timer_ticking, false);
+                r.time_left = 0;
                 continue;
             }
             if (motors[i]->get_paused()) continue;
 
             if (r.time_left > 0) r.time_left -= 0.010f;
+            if (r.time_left < 0) r.time_left = 0;
             m->set_status_bit(motor_t::status_bits::timer_ticking, r.time_left > 0);
         }
         xSemaphoreGive(tick_mutex);
@@ -276,7 +281,8 @@ namespace pumps
     {
         for (size_t i = 0; i < MY_PUMPS_NUM; i++)
         {
-            set_indicated_speed(i, motor_regs[i].volume_rate);    
+            motors[i]->disable_pwm();
+            set_indicated_speed(i, motor_regs[i].volume_rate);
         }
     }
     void stop_all()

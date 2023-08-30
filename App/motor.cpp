@@ -117,12 +117,18 @@ void motor_t::print_debug_info()
         "\tTimer range = %u\n"
         "\tARR = %lu\n"
         "\tPSC = %lu\n"
-        "\tCR1 = %04lX\n",
+        "\tCR1 = %04lX\n"
+        "\tPWM enabled = %u\n"
+        "\tTimer enabled = %u\n"
+        "\tTimer ticking = %u\n",
         last_volume_rate,
         current_range,
         timer->Instance->ARR,
         timer->Instance->PSC,
-        timer->Instance->CR1
+        timer->Instance->CR1,
+        CHECK_STATUS_BIT(status_bits::running),
+        CHECK_STATUS_BIT(status_bits::timer_mode),
+        CHECK_STATUS_BIT(status_bits::timer_ticking)
     );
 }
 
@@ -202,6 +208,7 @@ void motor_t::set_missing(bool v)
 {
     if (v) SET_STATUS_BIT(status_bits::missing);
     else RESET_STATUS_BIT(status_bits::missing);
+    supervize_pwm();
 }
 bool motor_t::get_missing()
 {
@@ -237,21 +244,38 @@ void motor_t::set_status_bit(status_bits b, bool v)
 
 void motor_t::supervize_pwm()
 {
+    bool state_switched = false;
     while (xSemaphoreTake(supervizer_mutex, portMAX_DELAY) != pdTRUE);
-    if ((
+    if (
         (last_volume_rate <= 0) ||
         CHECK_STATUS_BIT(status_bits::paused) ||
         CHECK_STATUS_BIT(status_bits::missing) ||
         (CHECK_STATUS_BIT(status_bits::timer_mode) && !CHECK_STATUS_BIT(status_bits::timer_ticking))
-    ) == CHECK_STATUS_BIT(status_bits::running))
+    )
     {
-        HAL_TIM_PWM_Stop(timer, timer_channel);
-        RESET_STATUS_BIT(status_bits::running);
+        if (CHECK_STATUS_BIT(status_bits::running))
+        {
+            HAL_TIM_PWM_Stop(timer, timer_channel);
+            RESET_STATUS_BIT(status_bits::running);
+            state_switched = true;
+        }
     }
     else
     {
-        HAL_TIM_PWM_Start(timer, timer_channel);
-        SET_STATUS_BIT(status_bits::running);
+        if (!CHECK_STATUS_BIT(status_bits::running))
+        {
+            HAL_TIM_PWM_Start(timer, timer_channel);
+            SET_STATUS_BIT(status_bits::running);
+            state_switched = true;
+        }
     }
+    xSemaphoreGive(supervizer_mutex);
+    if (state_switched) DBG("PWM = %u", CHECK_STATUS_BIT(status_bits::running));
+}
+void motor_t::disable_pwm()
+{
+    while (xSemaphoreTake(supervizer_mutex, portMAX_DELAY) != pdTRUE);
+    HAL_TIM_PWM_Stop(timer, timer_channel);
+    RESET_STATUS_BIT(status_bits::running);
     xSemaphoreGive(supervizer_mutex);
 }

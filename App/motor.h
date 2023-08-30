@@ -67,6 +67,7 @@ public:
     bool get_missing();
     void set_paused(bool v);
     bool get_paused();
+    void disable_pwm();
     
     bool check_status_bit(status_bits b);
     void set_status_bit(status_bits b, bool v);

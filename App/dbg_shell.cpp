@@ -113,14 +113,16 @@ namespace cli_commands
                 "\t\tIndicated speed = %f\n"
                 "\t\tSpeed fraction = %f\n"
                 "\t\tLoad fraction = %f\n"
-                "\t\tPaused: %u\n",
+                "\t\tPaused: %u\n"
+                "\t\tRunning: %u\n",
                 i,
                 pumps::get_missing(i),
                 pumps::get_overload(i),
                 pumps::get_indicated_speed(i),
                 pumps::get_speed_fraction(i),
                 pumps::get_load_fraction(i),
-                pumps::get_paused(i));
+                pumps::get_paused(i),
+                pumps::get_running(i));
         }
         return 0;
     }

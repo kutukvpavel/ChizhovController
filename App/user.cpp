@@ -251,6 +251,10 @@ void app_main(wdt::task_t* pwdt)
             pumps::set_enable(false); //Set this early
             if (nvs::get_version_match()) nvs::load_motor_regs();
             pumps::reload_motor_regs();
+            for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+            {
+                pumps::set_mode(i, pumps::modes::continuous);   
+            }
             state = states::init;
         }
         break;
