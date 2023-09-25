@@ -299,12 +299,32 @@ namespace cli_commands
     {
         if (argc < 2) return 1;
 
-        float v;
-        if (sscanf(argv[1], "%f", &v) != 1) return 2;
-        for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+        if (argc > 2)
         {
+            size_t i;
+            float v;
+            if (sscanf(argv[1], "%u", &i) != 1) return 2;
+            if (i > MY_PUMPS_MAX) return 3;
+            printf("\tWriting pump #%u\n",i);
+            if (sscanf(argv[2], "%f", &v) != 1) return 2;
             nvs::get_motor_params()[i].volume_rate_to_rps = v;
         }
+        else
+        {
+            printf("\tWriting all pumps\n");
+            float v;
+            if (sscanf(argv[1], "%f", &v) != 1) return 2;
+            for (size_t i = 0; i < MY_PUMPS_NUM; i++)
+            {
+                nvs::get_motor_params()[i].volume_rate_to_rps = v;
+            }
+        }
+        return 0;
+    }
+    uint8_t reload_params(int argc, char** argv)
+    {
+        pumps::reload_motor_params();
+        pumps::reload_params();
         return 0;
     }
 
@@ -485,6 +505,8 @@ void init()
     CLI_ADD_CMD("set_modbus_keepalive", "Set modbus keep alive timeout threshold (seconds). Expects a uint16_t.",
         &cli_commands::set_modbus_keepalive);
     CLI_ADD_CMD("set_modbus_addr", "Set modbus station address (default = 1). Expects a uint16_t.", &cli_commands::set_modbus_addr);
+    CLI_ADD_CMD("set_pump_coef", "Set VolumeRate-To-RPS conversion factor (Hz/a.u.), expects ", &cli_commands::set_pump_coef);
+    CLI_ADD_CMD("reload_params", "Reload pump params without a reboot", &cli_commands::reload_params);
 
     CLI_ADD_CMD("get_coproc_err_rate", "Print coprocessor CRC error count since boot",
         &cli_commands::get_coproc_err_rate);
