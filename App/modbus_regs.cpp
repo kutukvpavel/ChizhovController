@@ -124,6 +124,8 @@ namespace mb_regs
     static SemaphoreHandle_t set_mutex = NULL;
     static uint16_t status_double_buffer = 0;
 
+    void apply_instance_input_regs(instance_t* mb);
+
     void receive_cdc_callback(uint8_t* data, uint32_t* length)
     {
         printf(">RX+%lu\n", *length);
@@ -195,7 +197,37 @@ namespace mb_regs
         LL_GPIO_ResetOutputPin(USART2_DE_GPIO_Port, USART2_DE_Pin);
 #endif
     }
+    void dump_instance_regs(size_t i)
+    {
+        if (i >= array_size(instances))
+        {
+            ERR("Instance index out of range");
+            return;
+        }
+        for (size_t j = 0; j < length; j++)
+        {
+            printf("%04X\n", instances[i].cfg.u16regs[j]);   
+        }
+    }
+    void force_apply_instance_input_regs(size_t i)
+    {
+        if (i >= array_size(instances))
+        {
+            ERR("Instance index out of range");
+            return;
+        }
+        apply_instance_input_regs(&(instances[i]));
+    }
 
+    void apply_instance_input_regs(instance_t* mb)
+    {
+        // Modbus address
+        *mb_addr = mb->p->addr;
+        // Pump config
+        auto motor_params = nvs::get_motor_params();
+        COPY_INPUT_STRUCTS(mb->p->motor_params, motor_params);
+        *nvs::get_pump_params() = mb->p->pump_params;
+    }
     void sync_instance(instance_t* mb)
     {
         /** OUTPUT **/
@@ -252,16 +284,11 @@ namespace mb_regs
             //Otherwise only IO and pump setpoints are tracked
             if (CHECK_ACTIVITY_BIT(interface_activity_bits::reload))
             {
-                DBG("Modbus params reload, pump #0 coef = %f", mb->p->motor_params[0].volume_rate_to_rps);
-                //Modbus address
-                *mb_addr = mb->p->addr;
-                //Pump config
-                auto motor_params = nvs::get_motor_params();
-                COPY_INPUT_STRUCTS(mb->p->motor_params, motor_params);
-                *nvs::get_pump_params() = mb->p->pump_params;
-
+                //DBG("Modbus params reload, pump #0 coef = %f", mb->p->motor_params[0].volume_rate_to_rps);
+                apply_instance_input_regs(mb);
                 pumps::reload_params();
                 pumps::reload_motor_params();
+
                 RESET_BIT(mb->p->interface_active, interface_activity_bits::reload);
             }
 

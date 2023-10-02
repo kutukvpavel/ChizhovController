@@ -13,6 +13,8 @@ namespace mb_regs
 {
     /*extern const size_t length;
     MY_MB_DECLARE_REGS(MY_MB_USB);*/
+    void dump_instance_regs(size_t i);
+    void force_apply_instance_input_regs(size_t i);
 
     HAL_StatusTypeDef set_remote(bool enable);
     HAL_StatusTypeDef set_status(uint16_t s);

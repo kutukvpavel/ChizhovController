@@ -442,7 +442,7 @@ namespace cli_commands
 
         if (argc > 1)
         {
-            if (sscanf(argv[1], SCNu8, reinterpret_cast<uint8_t*>(&m)) != 1) return 2;
+            if (sscanf(argv[1], "%" SCNu8, reinterpret_cast<uint8_t*>(&m)) != 1) return 2;
             if (m >= display::test_modes::TST_LEN) 
             {
                 m = display::test_modes::digits;
@@ -468,6 +468,22 @@ namespace cli_commands
     uint8_t modbus_rs485_test(int argc, char** argv)
     {
         mb_regs::send_dbg_rs485();
+        return 0;
+    }
+    uint8_t modbus_dump_instance(int argc, char** argv)
+    {
+        if (argc < 2) return 1;
+        uint16_t i;
+        if (sscanf(argv[1], "%" SCNu16, &i) != 1) return 2;
+        mb_regs::dump_instance_regs(i);
+        return 0;
+    }
+    uint8_t modbus_force_apply(int argc, char** argv)
+    {
+        if (argc < 2) return 1;
+        uint16_t i;
+        if (sscanf(argv[1], "%" SCNu16, &i) != 1) return 2;
+        mb_regs::force_apply_instance_input_regs(i);
         return 0;
     }
 
@@ -536,6 +552,10 @@ void init()
         "Single arg > 0 => install, ==0 => remove. No args = just print.",
         &cli_commands::modbus_report);
     CLI_ADD_CMD("modbus_rs485_test", "Send test string over RS485 to test RTS signaling", &cli_commands::modbus_rs485_test);
+    CLI_ADD_CMD("modbus_dump_instance", "Dump interface instance register file, expects a uint16 (instance index)", 
+        &cli_commands::modbus_dump_instance);
+    CLI_ADD_CMD("modbus_force_apply", "Force-apply input registers from selected interface instance, expects a uint16 (instance index)", 
+        &cli_commands::modbus_force_apply);
 
     CLI_ADD_CMD("dfu", "Enter DFU mode. Hard reset is required to exit form it.", &cli_commands::dfu);
 }
