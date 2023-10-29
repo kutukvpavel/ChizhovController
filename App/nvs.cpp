@@ -143,15 +143,15 @@ namespace nvs
         }
         return status;
     }
-    HAL_StatusTypeDef calculate_crc(uint32_t* crc)
+    HAL_StatusTypeDef calculate_crc(uint32_t* crc, storage_t* buf)
     {
-        static const size_t crc_buf_size_bytes = sizeof(storage);
+        static const size_t crc_buf_size_bytes = sizeof(storage_t);
         static const size_t crc_buf_size_words = crc_buf_size_bytes / sizeof(uint32_t) + 
             (((crc_buf_size_bytes % sizeof(uint32_t)) != 0) ? 1 : 0);
 
         uint32_t* crc_buf = new uint32_t[crc_buf_size_words]();
         if (!crc_buf) return HAL_ERROR;
-        memcpy(crc_buf, &storage, crc_buf_size_bytes);
+        memcpy(crc_buf, buf, crc_buf_size_bytes);
         //memset(crc_buf + crc_buf_size_bytes, 0, crc_buf_size_words * sizeof(uint32_t) - crc_buf_size_bytes);
         hcrc.Instance->DR = UINT32_MAX;
         *crc = HAL_CRC_Calculate(&hcrc, crc_buf, crc_buf_size_words);
@@ -186,7 +186,7 @@ namespace nvs
         if ((ret = eeprom_read(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&storage), sizeof(storage))) != HAL_OK) return ret;
         //Check CRC
         uint32_t crc;
-        if (calculate_crc(&crc) != HAL_OK)
+        if (calculate_crc(&crc, &storage) != HAL_OK)
         {
             ERR("Failed to calculate NVS CRC");
             return HAL_ERROR;
@@ -204,18 +204,22 @@ namespace nvs
     }
     HAL_StatusTypeDef save()
     {
+        static storage_t double_buffer;
         HAL_StatusTypeDef ret;
         
+        //Make a copy (due to volatile variables)
+        memcpy(&double_buffer, &storage, sizeof(storage_t));
         //Compute CRC
         uint32_t crc;
-        if (calculate_crc(&crc) != HAL_OK)
+        if (calculate_crc(&crc, &double_buffer) != HAL_OK)
         {
             ERR("Failed to calculate NVS CRC");
             return HAL_ERROR;
         }
         preamble.crc = crc;
         //Store 
-        if ((ret = eeprom_write(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&storage), sizeof(storage))) != HAL_OK) return ret;
+        if ((ret = eeprom_write(MY_NVS_START_ADDRESS, reinterpret_cast<uint8_t*>(&double_buffer), sizeof(double_buffer))) 
+            != HAL_OK) return ret;
         DBG("NVS Data written OK. Writing NVS version...");
         preamble.version = MY_NVS_VERSION;
         return eeprom_write(MY_NVS_VER_ADDR, reinterpret_cast<uint8_t*>(&preamble), sizeof(preamble));

@@ -30,6 +30,7 @@
         vTaskDelay(pdMS_TO_TICKS(sr_io::regular_sync_delay_ms)); \
         pwdt->last_time = xTaskGetTickCount(); \
     }
+#define DIE_WITH_CLI(m) do { ERR(m); while (true) { HAL_IWDG_Refresh(&hiwdg); vTaskDelay(pdMS_TO_TICKS(100)); } } while (0);
 
 static inline void app_main(wdt::task_t* pwdt);
 
@@ -68,20 +69,20 @@ void StartMainTask(void *argument)
     
     DBG("[@ %lu] Single-threaded init:", compat::micros());
     DBG("I2C Init...");
-    if (i2c::init() != HAL_OK) DIE("Failed to initialize I2C");
+    if (i2c::init() != HAL_OK) DIE_WITH_CLI("Failed to initialize I2C");
     DBG("SPI Init...");
-    if (spi::init() != HAL_OK) DIE("Failed to initialize SPI");
+    if (spi::init() != HAL_OK) DIE_WITH_CLI("Failed to initialize SPI");
     DBG("NVS Init...");
     if (nvs::init() == HAL_OK)
     {
         if (nvs::load() != HAL_OK)
         {
-            DIE("Failed to load NVS data, bad CRC?");
+            DIE_WITH_CLI("Failed to load NVS data, bad CRC?");
         }
     }
     else
     {
-        DIE("Failed to initialize NVS");
+        DIE_WITH_CLI("Failed to initialize NVS");
     }
     DBG("Pump Init...");
     if (pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs()) != HAL_OK)
@@ -142,6 +143,7 @@ enum class states : uint16_t
 void supervize_led(led_states s);
 void supervize_fp(states s); //State-independent FP elements
 bool supervize_manual_edit(); //Returns: edit operation invoked
+void save_nvs_if_edit_invoked(bool& edit_invoked);
 
 void app_main(wdt::task_t* pwdt)
 {
@@ -209,7 +211,8 @@ void app_main(wdt::task_t* pwdt)
                     front_panel::set_light(front_panel::l_automatic_mode, front_panel::l_state::on);
                 }
             }
-            if (jump_to_auto && !mb_regs::any_remote_ready()) pumps::stop_all();
+            if (jump_to_auto) pumps::stop_all();
+            save_nvs_if_edit_invoked(edit_invoked);
             pumps::enable_hw_interlock(true);
             vTaskDelay(pdMS_TO_TICKS(30));
             pumps::switch_hw_interlock();
@@ -231,18 +234,15 @@ void app_main(wdt::task_t* pwdt)
         {
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_start);
+            save_nvs_if_edit_invoked(edit_invoked);
+            pumps::stop_all();
             state = states::automatic;
         }
         if (front_panel::get_button(front_panel::b_stop))
         {
             front_panel::clear_lights();
             WAIT_ON_BTN(front_panel::b_stop);
-            if (nvs::get_version_match() && edit_invoked) 
-            {
-                HAL_StatusTypeDef r = nvs::save();
-                if (r != HAL_OK) ERR("Failed to save NVS: %u", r);
-            }
-            edit_invoked = false;
+            save_nvs_if_edit_invoked(edit_invoked);
             state = states::init;
         }
         break;
@@ -443,4 +443,15 @@ void supervize_led(led_states s)
     default:
         break;
     }
+}
+
+void save_nvs_if_edit_invoked(bool& edit_invoked)
+{
+    if (nvs::get_version_match() && edit_invoked)
+    {
+        HAL_StatusTypeDef r = nvs::save();
+        if (r != HAL_OK)
+            ERR("Failed to save NVS: %u", r);
+    }
+    edit_invoked = false;
 }

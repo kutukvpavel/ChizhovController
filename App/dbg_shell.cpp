@@ -269,16 +269,6 @@ namespace cli_commands
         );
         return 0;
     }
-    uint8_t nvs_calc_crc(int argc, char** argv)
-    {
-        uint32_t crc;
-        if (nvs::calculate_crc(&crc) == HAL_OK)
-        {
-            printf("\t%0lX\n", crc);
-            return 0;
-        }
-        return 1;
-    }
     uint8_t set_modbus_keepalive(int argc, char** argv)
     {
         if (argc < 2) return 1;
@@ -517,7 +507,7 @@ void init()
     CLI_ADD_CMD("nvs_test", "Test EEPROM readback, performs sequential number write and read, and does nvs_save afterwards",
         &cli_commands::nvs_test);
     CLI_ADD_CMD("nvs_report", "Report NVS contents in human-readable format", &cli_commands::nvs_report);
-    CLI_ADD_CMD("nvs_calc_crc", "Calculate and report current NVS contents' CRC, doesn't modify storage.crc", &cli_commands::nvs_calc_crc);
+    //CLI_ADD_CMD("nvs_calc_crc", "Calculate and report current NVS contents' CRC, doesn't modify storage.crc", &cli_commands::nvs_calc_crc);
     CLI_ADD_CMD("set_modbus_keepalive", "Set modbus keep alive timeout threshold (seconds). Expects a uint16_t.",
         &cli_commands::set_modbus_keepalive);
     CLI_ADD_CMD("set_modbus_addr", "Set modbus station address (default = 1). Expects a uint16_t.", &cli_commands::set_modbus_addr);
