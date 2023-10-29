@@ -20,7 +20,7 @@ namespace pumps
         float volume_rate_resolution;
     };
 
-    void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr);
+    HAL_StatusTypeDef init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr);
 
     void reload_motor_params();
     void reload_params();

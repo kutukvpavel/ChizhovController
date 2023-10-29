@@ -51,11 +51,13 @@ namespace pumps
 
     void tick_10ms(TimerHandle_t t);
 
-    void init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
+    HAL_StatusTypeDef init(const params_t* p, const motor_params_t* mp, motor_reg_t* mr)
     {
-        assert_param(p);
-        assert_param(mp);
-        assert_param(mr);
+        if (!p || !mp || !mr)
+        {
+            ERR("Pump init received a null pointer: p = %p, mp = %p, mr = %p", p, mp, mr);
+            return HAL_ERROR;
+        }
         
         motor_regs = mr;
         params = p;
@@ -63,16 +65,21 @@ namespace pumps
         for (size_t i = 0; i < array_size(motors); i++)
         {
             auto& cfg = configs[i];
-            assert_param(cfg.timer);
+            if (!cfg.timer)
+            {
+                ERR("Wrong motor config: timer #%u pointer is null", i);
+                return HAL_ERROR;
+            }
             motors[i] = new motor_t(cfg.timer, cfg.timer_channel, 
                 static_cast<sr_io::out>(sr_io::out::MOTOR_DIR_0 + i), mp + i, mr + i);
             cfg.full_assigned_speed = mr[i].volume_rate;
         }
         tick_mutex = xSemaphoreCreateMutex();
-        assert_param(tick_mutex);
+        if (!tick_mutex) return HAL_ERROR; //FreeRTOS object allocation errors are silent returns
         tick_10ms_timer = xTimerCreate("PUMP", pdMS_TO_TICKS(10), pdTRUE, tick_10ms_timer, tick_10ms);
-        assert_param(tick_10ms_timer);
+        if (!tick_10ms_timer) return HAL_ERROR;
         while (xTimerStart(tick_10ms_timer, portMAX_DELAY) != pdTRUE);
+        return HAL_OK;
     }
 
     void reload_motor_params()

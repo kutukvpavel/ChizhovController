@@ -68,13 +68,24 @@ void StartMainTask(void *argument)
     
     DBG("[@ %lu] Single-threaded init:", compat::micros());
     DBG("I2C Init...");
-    i2c::init();
+    if (i2c::init() != HAL_OK) DIE("Failed to initialize I2C");
     DBG("SPI Init...");
-    spi::init();
+    if (spi::init() != HAL_OK) DIE("Failed to initialize SPI");
     DBG("NVS Init...");
-    if (nvs::init() == HAL_OK) nvs::load();
+    if (nvs::init() == HAL_OK)
+    {
+        if (nvs::load() != HAL_OK)
+        {
+            DIE("Failed to load NVS data, bad CRC?");
+        }
+    }
+    else
+    {
+        DIE("Failed to initialize NVS");
+    }
     DBG("Pump Init...");
-    pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs());
+    if (pumps::init(nvs::get_pump_params(), nvs::get_motor_params(), nvs::get_motor_regs()) != HAL_OK)
+        DIE("Failed to initialize pumps");
     DBG("USB Init...");
     MX_USB_DEVICE_Init();
     HAL_IWDG_Refresh(&hiwdg);
