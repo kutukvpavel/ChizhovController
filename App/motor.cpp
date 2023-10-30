@@ -78,9 +78,9 @@ motor_t::motor_t(TIM_HandleTypeDef* tim, uint32_t channel, sr_io::out dir, const
     static_assert(sizeof(motor_params_t) % 2 == 0);
     static_assert(sizeof(motor_reg_t) % 2 == 0);
 
-    params_mutex = xSemaphoreCreateMutex();
+    set_mutex = xSemaphoreCreateMutex();
     supervizer_mutex = xSemaphoreCreateMutex();
-    assert_param(params_mutex);
+    assert_param(set_mutex);
     assert_param(tim);
     assert_param(p);
     assert_param(r);
@@ -95,19 +95,20 @@ motor_t::~motor_t()
 {
     HAL_TIM_PWM_Stop(timer, timer_channel);
     HAL_TIM_Base_Stop(timer);
-    vSemaphoreDelete(params_mutex);
+    vSemaphoreDelete(set_mutex);
     vSemaphoreDelete(supervizer_mutex);
 }
 
 HAL_StatusTypeDef motor_t::reload_params()
 {
-    if (xSemaphoreTake(params_mutex, pdMS_TO_TICKS(50)) != pdTRUE) 
+    if (xSemaphoreTake(set_mutex, pdMS_TO_TICKS(50)) != pdTRUE) 
     {
         ERR("Failed to acquire motor params mutex");
         return HAL_BUSY;
     }
     params = *nvs::get_motor_params();
-    xSemaphoreGive(params_mutex);
+    set_internal(last_volume_rate);
+    xSemaphoreGive(set_mutex);
     return HAL_OK;
 }
 void motor_t::print_debug_info()
@@ -132,25 +133,13 @@ void motor_t::print_debug_info()
     );
 }
 
-HAL_StatusTypeDef motor_t::set_volume_rate(float v)
+void motor_t::set_internal(float v)
 {
-    if (v == last_volume_rate) return HAL_OK;
-    if (v <= __FLT_EPSILON__)
-    {
-        last_volume_rate = 0;
-        reg->volume_rate = 0;
-        reg->rps = 0;
-        supervize_pwm();
-        return HAL_OK;
-    }
-
-    if (xSemaphoreTake(params_mutex, pdMS_TO_TICKS(50)) != pdTRUE) return HAL_BUSY;
     float rps = v * params.volume_rate_to_rps;
     if (rps > params.max_rate_rps) rps = params.max_rate_rps;
     reg->rps = rps;
     reg->volume_rate = rps / params.volume_rate_to_rps;
     float pulse_hz = rps * params.microsteps * params.teeth;
-    xSemaphoreGive(params_mutex);
 
     current_range = calculate_range(pulse_hz, current_range);
     uint16_t psc = ranges[current_range].psc;
@@ -164,10 +153,28 @@ HAL_StatusTypeDef motor_t::set_volume_rate(float v)
     timer->Instance->PSC = psc;
     timer->Instance->ARR = arr;
     taskEXIT_CRITICAL();
+}
+HAL_StatusTypeDef motor_t::set_volume_rate(float v)
+{
+    if (xSemaphoreTake(set_mutex, pdMS_TO_TICKS(50)) != pdTRUE) return HAL_BUSY;
 
-    last_volume_rate = v;
-    supervize_pwm();
+    if (v != last_volume_rate)
+    {
+        if (v <= __FLT_EPSILON__)
+        {
+            last_volume_rate = 0;
+            reg->volume_rate = 0;
+            reg->rps = 0;
+        }
+        else
+        {
+            set_internal(v);
+            last_volume_rate = v;
+        }
+        supervize_pwm();
+    }
 
+    xSemaphoreGive(set_mutex);
     return HAL_OK;
 }
 

@@ -35,10 +35,11 @@ private:
     size_t current_range = 0;
     motor_params_t params;
     motor_reg_t* reg;
-    SemaphoreHandle_t params_mutex = NULL;
+    SemaphoreHandle_t set_mutex = NULL;
     SemaphoreHandle_t supervizer_mutex = NULL;
 
     void supervize_pwm();
+    void set_internal(float);
 public:
     enum status_bits : uint16_t
     {
